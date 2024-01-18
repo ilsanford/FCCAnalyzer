@@ -14,7 +14,6 @@ args = parser.parse_args()
 functions.set_threads(args)
 
 functions.add_include_file("analyses/ewk_z/functions.h")
-functions.add_include_file("include/helper_jetclustering.h")
 
 # define histograms
 bins_p_mu = (2000, 0, 200) # 100 MeV bins
@@ -44,7 +43,6 @@ bins_cos = (100, -1, 1)
 bins_thrustval = (2000, 0, 2)
 bins_thrustcomp = (2000, -100, 100)
 
-#jetcluster_helper = helpers.JetClusteringHelper(1.5, 0, 0, 0, 0, -1)
 
 def build_graph_ll(df, dataset):
 
@@ -189,7 +187,7 @@ def build_graph_qq(df, dataset):
         df = df.Define("clustered_jets", "JetClustering::clustering_valencia(0.5, 1, 2, 0, 0, 1., 1.)(pseudo_jets)")
     elif args.jetAlgo == "genkt":
         #df = jetcluster_helper.run_clustering(df)
-        df = df.Define("clustered_jets", "FCCAnalyses::clustering_ee_genkt(1.5, 0, 0, 0, 0, -1)(pseudo_jets)")
+        df = df.Define("clustered_jets", "JetClustering::clustering_ee_genkt(1.5, 0, 0, 0, 0, -1)(pseudo_jets)")
         #df = df.Define("clustered_jets", "JetClustering::clustering_ee_genkt(1.5, 0, 0, 0, 0, -1)(pseudo_jets)")
 
 

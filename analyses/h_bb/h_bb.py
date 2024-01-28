@@ -139,116 +139,163 @@ def build_graph(df, dataset):
     select_qq = f"! ( ({select_mumu}) || ({select_ee}) || ({select_nunu}) )"
     
     #########
-    ### CUT 1: veto electrons (want Z->mumu, not Z->ee)
+    ### CUT 1: veto uninterested decay products
+    ### CUT 2: choose decay products
+    ### CUT 3: missing energy
     #########
-    df = df.Filter("electrons_no == 0")
-
-    #########
-    ### CUT 2: at least 2 OS muons
-    #########
-    df = df.Filter("muons_no >= 2")
-    results.append(df.Histo1D(("cutFlow", "", *bins_count), "cut2"))
-
-    #########
-    ### CUT 3: we want to detect Z->mumu (so we don't have Z->qq interfering with measurement of H->bb)
-    #########
-
-    # build the Z resonance based on the available muons. Returns the best muon pair compatible with the Z mass and recoil at 125 GeV
-    # technically, it returns a ReconstructedParticleData object with index 0 the di-lepton system (Z), index and 2 the leptons of the pair
-    df = df.Define("hbuilder_result", "FCCAnalyses::resonanceBuilder_mass_recoil(91.2, 125, 0, 240, false)(muons, MCRecoAssociations0, MCRecoAssociations1, ReconstructedParticles, Particle, Particle0, Particle1)")
+    df = df.Define("missingEnergy_rp", "FCCAnalyses::missingEnergy(240., ReconstructedParticles)")
+    df = df.Define("missingEnergy", "missingEnergy_rp[0].energy")
+    df = df.Define("cosTheta_miss", "FCCAnalyses::get_cosTheta_miss(missingEnergy_rp)")
+    #results.append(df.Histo1D(("cosThetaMiss_nOne", "", *bins_cosThetaMiss), "cosTheta_miss"))
+    df = df.Filter("cosTheta_miss < 0.98")
+    #results.append(df.Histo1D(("cutFlow", "", *bins_count), "cut5"))
     
-    df = df.Filter("hbuilder_result.size() > 0")
-    results.append(df.Histo1D(("cutFlow", "", *bins_count), "cut3"))
+    df_mumu = df.Filter(select_mumu)
+    df_ee   = df.Filter(select_ee)
+    df_nunu = df.Filter(select_nunu)
+    df_qq   = df.Filter(select_qq)
+    
+    #results.append(df_mumu.Histo1D(("cutFlow", "", *bins_count), "cut2_mumu"))
+    #results.append(df_ee.Histo1D(("cutFlow", "", *bins_count), "cut2_ee"))
+    #results.append(df_nunu.Histo1D(("cutFlow", "", *bins_count), "cut2_nunu"))
+    #results.append(df_qq.Histo1D(("cutFlow", "", *bins_count), "cut2_qq"))
 
-    df = df.Define("zmumu", "ROOT::VecOps::RVec<edm4hep::ReconstructedParticleData>{hbuilder_result[0]}") # the Z
-    df = df.Define("zmumu_tlv", "FCCAnalyses::makeLorentzVectors(zmumu)") # the muons
-    df = df.Define("zmumu_leps", "ROOT::VecOps::RVec<edm4hep::ReconstructedParticleData>{hbuilder_result[1],hbuilder_result[2]}")
-    df = df.Define("zmumu_leps_tlv", "FCCAnalyses::makeLorentzVectors(zmumu_leps)")
 
-    df = df.Define("zmumu_m", "FCCAnalyses::ReconstructedParticle::get_mass(zmumu)[0]")
-    df = df.Define("zmumu_p", "FCCAnalyses::ReconstructedParticle::get_p(zmumu)[0]")
-    df = df.Define("zmumu_recoil", "FCCAnalyses::ReconstructedParticle::recoilBuilder(240)(zmumu)")
-    df = df.Define("zmumu_recoil_m", "FCCAnalyses::ReconstructedParticle::get_mass(zmumu_recoil)[0]")
+    #########
+    ### CUT 3: we want to detect Z->mumu/ee (so we don't have Z->qq interfering with measurement of H->bb)
+    ###        Z->qq and Z->nunu do not get the next few cuts
+    #########
+
+    # build the Z resonance based on the available leptons. Returns the best lepton pair compatible with the Z mass and recoil at 125 GeV
+    # technically, it returns a ReconstructedParticleData object with index 0 the di-lepton system (Z), index and 2 the leptons of the pair
+    
+    # muons
+    df_mumu = df_mumu.Define("hbuilder_result", "FCCAnalyses::resonanceBuilder_mass_recoil(91.2, 125, 0, 240, false)(muons, MCRecoAssociations0, MCRecoAssociations1, ReconstructedParticles, Particle, Particle0, Particle1)")
+    
+    df_mumu = df_mumu.Filter("hbuilder_result.size() > 0")
+    #results.append(df_mumu.Histo1D(("cutFlow", "", *bins_count), "cut3_mumu"))
+
+    df_mumu = df_mumu.Define("zmumu", "ROOT::VecOps::RVec<edm4hep::ReconstructedParticleData>{hbuilder_result[0]}") # the Z
+    df_mumu = df_mumu.Define("zmumu_tlv", "FCCAnalyses::makeLorentzVectors(zmumu)") # the muons
+    df_mumu = df_mumu.Define("zmumu_leps", "ROOT::VecOps::RVec<edm4hep::ReconstructedParticleData>{hbuilder_result[1],hbuilder_result[2]}")
+    df_mumu = df_mumu.Define("zmumu_leps_tlv", "FCCAnalyses::makeLorentzVectors(zmumu_leps)")
+
+    df_mumu = df_mumu.Define("zmumu_m", "FCCAnalyses::ReconstructedParticle::get_mass(zmumu)[0]")
+    df_mumu = df_mumu.Define("zmumu_p", "FCCAnalyses::ReconstructedParticle::get_p(zmumu)[0]")
+    df_mumu = df_mumu.Define("zmumu_recoil", "FCCAnalyses::ReconstructedParticle::recoilBuilder(240)(zmumu)")
+    df_mumu = df_mumu.Define("zmumu_recoil_m", "FCCAnalyses::ReconstructedParticle::get_mass(zmumu_recoil)[0]")
+
+    # electrons
+    df_ee = df_ee.Define("hbuilder_result", "FCCAnalyses::resonanceBuilder_mass_recoil(91.2, 125, 0, 240, false)(electrons, MCRecoAssociations0, MCRecoAssociations1, ReconstructedParticles, Particle, Particle0, Particle1)")
+    
+    df_ee = df_ee.Filter("hbuilder_result.size() > 0")
+    #results.append(df_ee.Histo1D(("cutFlow", "", *bins_count), "cut3_ee"))
+
+    df_ee = df_ee.Define("zee", "ROOT::VecOps::RVec<edm4hep::ReconstructedParticleData>{hbuilder_result[0]}") # the Z
+    df_ee = df_ee.Define("zee_tlv", "FCCAnalyses::makeLorentzVectors(zee)") # the electrons
+    df_ee = df_ee.Define("zee_leps", "ROOT::VecOps::RVec<edm4hep::ReconstructedParticleData>{hbuilder_result[1],hbuilder_result[2]}")
+    df_ee = df_ee.Define("zee_leps_tlv", "FCCAnalyses::makeLorentzVectors(zee_leps)")
+
+    df_ee = df_ee.Define("zee_m", "FCCAnalyses::ReconstructedParticle::get_mass(zee)[0]")
+    df_ee = df_ee.Define("zee_p", "FCCAnalyses::ReconstructedParticle::get_p(zee)[0]")
+    df_ee = df_ee.Define("zee_recoil", "FCCAnalyses::ReconstructedParticle::recoilBuilder(240)(zee)")
+    df_ee = df_ee.Define("zee_recoil_m", "FCCAnalyses::ReconstructedParticle::get_mass(zee_recoil)[0]")
 
 
 
     #########
     ### CUT 3: recoil cut (H mass)
     #########  
-    results.append(df.Histo1D(("mumu_recoil_m_nOne", "", *bins_m), "zmumu_recoil_m"))
-    df = df.Filter("zmumu_recoil_m > 100 && zmumu_recoil_m < 150")
-    results.append(df.Histo1D(("cutFlow", "", *bins_count), "cut4"))
+    #results.append(df_mumu.Histo1D(("mumu_recoil_m_nOne", "", *bins_m), "zmumu_recoil_m"))
+    df_mumu = df_mumu.Filter("zmumu_recoil_m > 100 && zmumu_recoil_m < 150")
+    #results.append(df_mumu.Histo1D(("cutFlow", "", *bins_count), "cut4_mumu"))
+    
+    #results.append(df_ee.Histo1D(("ee_recoil_m_nOne", "", *bins_m), "zee_recoil_m"))
+    df_ee = df_ee.Filter("zee_recoil_m > 100 && zee_recoil_m < 150")
+    #results.append(df_ee.Histo1D(("cutFlow", "", *bins_count), "cut4_ee"))
+
 
     #####
     ### CUT 4: momentum
     #####
-    results.append(df.Histo1D(("mumu_p_nOne", "", *bins_p), "zmumu_p"))
-    df = df.Filter("zmumu_p > 20 && zmumu_p < 65")
-    results.append(df.Histo1D(("cutFlow", "", *bins_count), "cut4"))
+    #results.append(df_mumu.Histo1D(("mumu_p_nOne", "", *bins_p), "zmumu_p"))
+    df_mumu = df_mumu.Filter("zmumu_p > 20 && zmumu_p < 65")
+    #results.append(df_mumu.Histo1D(("cutFlow", "", *bins_count), "cut4_mumu"))
+
+    #results.append(df.Histo1D(("ee_p_nOne", "", *bins_p), "zee_p"))
+    df_ee = df_ee.Filter("zee_p > 20 && zee_p < 65")
+    #results.append(df_ee.Histo1D(("cutFlow", "", *bins_count), "cut4_ee"))
 
 
     ####
     ## CUT 5: cos theta(miss)
     ####
-    df = df.Define("missingEnergy_rp", "FCCAnalyses::missingEnergy(240., ReconstructedParticles)")
-    df = df.Define("missingEnergy", "missingEnergy_rp[0].energy")
-    df = df.Define("cosTheta_miss", "FCCAnalyses::get_cosTheta_miss(missingEnergy_rp)")
-    results.append(df.Histo1D(("cosThetaMiss_nOne", "", *bins_cosThetaMiss), "cosTheta_miss"))
-    df = df.Filter("cosTheta_miss < 0.98")
-    results.append(df.Histo1D(("cutFlow", "", *bins_count), "cut5"))
+    #df_mumu = df_mumu.Define("missingEnergy_rp", "FCCAnalyses::missingEnergy(240., ReconstructedParticles)")
+    #df_mumu = df_mumu.Define("missingEnergy", "missingEnergy_rp[0].energy")
+    #df_mumu = df_mumu.Define("cosTheta_miss", "FCCAnalyses::get_cosTheta_miss(missingEnergy_rp)")
+    #results.append(df_mumu.Histo1D(("cosThetaMiss_nOne", "", *bins_cosThetaMiss), "cosTheta_miss_mumu"))
+    #df_mumu = df_mumu.Filter("cosTheta_miss < 0.98")
+    #results.append(df_mumu.Histo1D(("cutFlow", "", *bins_count), "cut5_mumu"))
+
+    #df = df.Define("missingEnergy_rp", "FCCAnalyses::missingEnergy(240., ReconstructedParticles)")
+    #df = df.Define("missingEnergy", "missingEnergy_rp[0].energy")
+    #df = df.Define("cosTheta_miss", "FCCAnalyses::get_cosTheta_miss(missingEnergy_rp)")
+    #results.append(df.Histo1D(("cosThetaMiss_nOne", "", *bins_cosThetaMiss), "cosTheta_miss"))
+    #df = df.Filter("cosTheta_miss < 0.98")
+    #results.append(df.Histo1D(("cutFlow", "", *bins_count), "cut5"))
 
 
     ####
     ## CUT 6: missing energy
     ####
-    results.append(df.Histo1D(("missingEnergy_nOne", "", *bins_m), "missingEnergy"))
-    df = df.Filter("missingEnergy < 115 && (missingEnergy > 95 || missingEnergy < 30 )")
-    results.append(df.Histo1D(("cutFlow", "", *bins_count), "cut6"))
+    #results.append(df.Histo1D(("missingEnergy_nOne", "", *bins_m), "missingEnergy"))
+    #df = df.Filter("missingEnergy < 115 && (missingEnergy > 95 || missingEnergy < 30 )")
+    #results.append(df.Histo1D(("cutFlow", "", *bins_count), "cut6"))
 
 
     #########
     ### CUT 7: cut on Z mass
     #########
-    results.append(df.Histo1D(("zmumu_m_nOne", "", *bins_m), "zmumu_m"))
-    df = df.Filter("zmumu_m > 80 && zmumu_m < 100")
-    results.append(df.Histo1D(("cutFlow", "", *bins_count), "cut7"))
+    #results.append(df.Histo1D(("zmumu_m_nOne", "", *bins_m), "zmumu_m"))
+    df_mumu = df_mumu.Filter("zmumu_m > 80 && zmumu_m < 100")
+    #results.append(df.Histo1D(("cutFlow", "", *bins_count), "cut7"))
+
+    #results.append(df.Histo1D(("zmumu_m_nOne", "", *bins_m), "zmumu_m"))
+    df_ee = df_ee.Filter("zee_m > 80 && zee_m < 100")
+    #results.append(df.Histo1D(("cutFlow", "", *bins_count), "cut7"))
+
+    #results.append(df.Histo1D(("zmumu_m_nocat", "", *bins_m_zoom), "zmumu_m"))
 
 
-    results.append(df.Histo1D(("zmumu_m_nocat", "", *bins_m_zoom), "zmumu_m"))
-
-
-    # define PF candidates collection by removing the muons
-    df = df.Define("rps_no_muons", "FCCAnalyses::ReconstructedParticle::remove(ReconstructedParticles, muons)")
-    df = df.Define("RP_px", "FCCAnalyses::ReconstructedParticle::get_px(rps_no_muons)")
-    df = df.Define("RP_py", "FCCAnalyses::ReconstructedParticle::get_py(rps_no_muons)")
-    df = df.Define("RP_pz","FCCAnalyses::ReconstructedParticle::get_pz(rps_no_muons)")
-    df = df.Define("RP_e", "FCCAnalyses::ReconstructedParticle::get_e(rps_no_muons)")
-    df = df.Define("RP_m", "FCCAnalyses::ReconstructedParticle::get_mass(rps_no_muons)")
-    df = df.Define("RP_q", "FCCAnalyses::ReconstructedParticle::get_charge(rps_no_muons)")
-    df = df.Define("pseudo_jets", "FCCAnalyses::JetClusteringUtils::set_pseudoJets(RP_px, RP_py, RP_pz, RP_e)")
-
-    df = df.Define("clustered_jets", "JetClustering::clustering_ee_kt(2, 2, 1, 0)(pseudo_jets)")
-    df = df.Define("jets", "FCCAnalyses::JetClusteringUtils::get_pseudoJets(clustered_jets)")
-    df = df.Define("jetconstituents", "FCCAnalyses::JetClusteringUtils::get_constituents(clustered_jets)")
-    df = df.Define("jets_e", "FCCAnalyses::JetClusteringUtils::get_e(jets)")
-    df = df.Define("jets_px", "FCCAnalyses::JetClusteringUtils::get_px(jets)")
-    df = df.Define("jets_py", "FCCAnalyses::JetClusteringUtils::get_py(jets)")
-    df = df.Define("jets_pz", "FCCAnalyses::JetClusteringUtils::get_pz(jets)")
-    df = df.Define("jets_m", "FCCAnalyses::JetClusteringUtils::get_m(jets)")
-
-    df = df.Define("jet1", "ROOT::Math::PxPyPzEVector(jets_px[0], jets_py[0], jets_pz[0], jets_e[0])")
-    df = df.Define("jet2", "ROOT::Math::PxPyPzEVector(jets_px[1], jets_py[1], jets_pz[1], jets_e[1])")
-    df = df.Define("jet1_p", "jet1.P()")
-    df = df.Define("jet2_p", "jet2.P()")
-    df = df.Define("dijet", "jet1+jet2")
-    df = df.Define("dijet_m", "dijet.M()")
-    df = df.Define("dijet_p", "dijet.P()")
-
-    # modify histograms
-    #results.append(df_qq.Histo1D(("zqq_jet1_p", "", *bins_p), "jet1_p"))
-    #results.append(df_qq.Histo1D(("zqq_jet2_p", "", *bins_p), "jet2_p"))
-    results.append(df.Histo1D(("zqq_m", "", *bins_m), "dijet_m"))
-    #results.append(df_qq.Histo1D(("zqq_hmumu_m", "", *bins_m_zoom), "hmumu_m")
+    for leps, df in [("muons", df_mumu), ("electrons", df_ee)]:
+        # define PF candidates collection by removing the leptons
+        df = df.Define("rps_no_muons", f"FCCAnalyses::ReconstructedParticle::remove(ReconstructedParticles, {leps})")
+        df = df.Define("RP_px", "FCCAnalyses::ReconstructedParticle::get_px(rps_no_muons)")
+        df = df.Define("RP_py", "FCCAnalyses::ReconstructedParticle::get_py(rps_no_muons)")
+        df = df.Define("RP_pz","FCCAnalyses::ReconstructedParticle::get_pz(rps_no_muons)")
+        df = df.Define("RP_e", "FCCAnalyses::ReconstructedParticle::get_e(rps_no_muons)")
+        df = df.Define("RP_m", "FCCAnalyses::ReconstructedParticle::get_mass(rps_no_muons)")
+        df = df.Define("RP_q", "FCCAnalyses::ReconstructedParticle::get_charge(rps_no_muons)")
+        df = df.Define("pseudo_jets", "FCCAnalyses::JetClusteringUtils::set_pseudoJets(RP_px, RP_py, RP_pz, RP_e)")
+        
+        df = df.Define("clustered_jets", "JetClustering::clustering_ee_kt(2, 2, 1, 0)(pseudo_jets)")
+        df = df.Define("jets", "FCCAnalyses::JetClusteringUtils::get_pseudoJets(clustered_jets)")
+        df = df.Define("jetconstituents", "FCCAnalyses::JetClusteringUtils::get_constituents(clustered_jets)")
+        df = df.Define("jets_e", "FCCAnalyses::JetClusteringUtils::get_e(jets)")
+        df = df.Define("jets_px", "FCCAnalyses::JetClusteringUtils::get_px(jets)")
+        df = df.Define("jets_py", "FCCAnalyses::JetClusteringUtils::get_py(jets)")
+        df = df.Define("jets_pz", "FCCAnalyses::JetClusteringUtils::get_pz(jets)")
+        df = df.Define("jets_m", "FCCAnalyses::JetClusteringUtils::get_m(jets)")
+        
+        df = df.Define("jet1", "ROOT::Math::PxPyPzEVector(jets_px[0], jets_py[0], jets_pz[0], jets_e[0])")
+        df = df.Define("jet2", "ROOT::Math::PxPyPzEVector(jets_px[1], jets_py[1], jets_pz[1], jets_e[1])")
+        df = df.Define("jet1_p", "jet1.P()")
+        df = df.Define("jet2_p", "jet2.P()")
+        df = df.Define("dijet", "jet1+jet2")
+        df = df.Define("dijet_m", "dijet.M()")
+        df = df.Define("dijet_p", "dijet.P()")
+        
+        results.append(df.Histo1D((f"z{leps}_m", "", *bins_m), "dijet_m"))
 
 
     return results, weightsum

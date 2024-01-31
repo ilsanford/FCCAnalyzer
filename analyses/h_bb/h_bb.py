@@ -132,33 +132,34 @@ def build_graph(df, dataset):
     results.append(df.Histo1D(("cutFlow", "", *bins_count), "cut0"))
     
     
-    ### CATEGORIZATION: choose Z decay products
-    select_mumu = "muons_no == 2 && electrons_no == 0 && missingEnergy < 30"
-    select_ee   = "muons_no == 0 && electrons_no == 2 && missingEnergy < 30"
-    select_nunu = "muons_no == 0 && electrons_no == 0 && missingEnergy > 95"
-    select_qq = f"! ( ({select_mumu}) || ({select_ee}) || ({select_nunu}) )"
-    
     #########
-    ### CUT 1: veto uninterested decay products
-    ### CUT 2: choose decay products
-    ### CUT 3: missing energy
+    ### CUT 1: cos theta(miss)
     #########
     df = df.Define("missingEnergy_rp", "FCCAnalyses::missingEnergy(240., ReconstructedParticles)")
     df = df.Define("missingEnergy", "missingEnergy_rp[0].energy")
     df = df.Define("cosTheta_miss", "FCCAnalyses::get_cosTheta_miss(missingEnergy_rp)")
-    #results.append(df.Histo1D(("cosThetaMiss_nOne", "", *bins_cosThetaMiss), "cosTheta_miss"))
+    results.append(df.Histo1D(("cosThetaMiss_nOne", "", *bins_cosThetaMiss), "cosTheta_miss"))
     df = df.Filter("cosTheta_miss < 0.98")
-    #results.append(df.Histo1D(("cutFlow", "", *bins_count), "cut5"))
+    results.append(df.Histo1D(("cutFlow", "", *bins_count), "cut1"))
+    
+
+    #########
+    ### CUT 2: select Z decay product
+    #########
+    select_mumu = "muons_no == 2 && electrons_no == 0 && missingEnergy < 30"
+    select_ee   = "muons_no == 0 && electrons_no == 2 && missingEnergy < 30"
+    select_nunu = "muons_no == 0 && electrons_no == 0 && missingEnergy > 95"
+    select_qq = f"! ( ({select_mumu}) || ({select_ee}) || ({select_nunu}) )"
     
     df_mumu = df.Filter(select_mumu)
     df_ee   = df.Filter(select_ee)
     df_nunu = df.Filter(select_nunu)
     df_qq   = df.Filter(select_qq)
     
-    #results.append(df_mumu.Histo1D(("cutFlow", "", *bins_count), "cut2_mumu"))
-    #results.append(df_ee.Histo1D(("cutFlow", "", *bins_count), "cut2_ee"))
-    #results.append(df_nunu.Histo1D(("cutFlow", "", *bins_count), "cut2_nunu"))
-    #results.append(df_qq.Histo1D(("cutFlow", "", *bins_count), "cut2_qq"))
+    results.append(df_mumu.Histo1D(("cutFlow", "", *bins_count), "cut2"))
+    #results.append(df_ee.Histo1D(("cutFlow", "", *bins_count), "cut2"))
+    #results.append(df_nunu.Histo1D(("cutFlow", "", *bins_count), "cut2"))
+    #results.append(df_qq.Histo1D(("cutFlow", "", *bins_count), "cut2"))
 
 
     #########
@@ -173,7 +174,7 @@ def build_graph(df, dataset):
     df_mumu = df_mumu.Define("hbuilder_result", "FCCAnalyses::resonanceBuilder_mass_recoil(91.2, 125, 0, 240, false)(muons, MCRecoAssociations0, MCRecoAssociations1, ReconstructedParticles, Particle, Particle0, Particle1)")
     
     df_mumu = df_mumu.Filter("hbuilder_result.size() > 0")
-    #results.append(df_mumu.Histo1D(("cutFlow", "", *bins_count), "cut3_mumu"))
+    results.append(df_mumu.Histo1D(("cutFlow", "", *bins_count), "cut3"))
 
     df_mumu = df_mumu.Define("zmumu", "ROOT::VecOps::RVec<edm4hep::ReconstructedParticleData>{hbuilder_result[0]}") # the Z
     df_mumu = df_mumu.Define("zmumu_tlv", "FCCAnalyses::makeLorentzVectors(zmumu)") # the muons
@@ -189,7 +190,7 @@ def build_graph(df, dataset):
     df_ee = df_ee.Define("hbuilder_result", "FCCAnalyses::resonanceBuilder_mass_recoil(91.2, 125, 0, 240, false)(electrons, MCRecoAssociations0, MCRecoAssociations1, ReconstructedParticles, Particle, Particle0, Particle1)")
     
     df_ee = df_ee.Filter("hbuilder_result.size() > 0")
-    #results.append(df_ee.Histo1D(("cutFlow", "", *bins_count), "cut3_ee"))
+    #results.append(df_ee.Histo1D(("cutFlow", "", *bins_count), "cut3"))
 
     df_ee = df_ee.Define("zee", "ROOT::VecOps::RVec<edm4hep::ReconstructedParticleData>{hbuilder_result[0]}") # the Z
     df_ee = df_ee.Define("zee_tlv", "FCCAnalyses::makeLorentzVectors(zee)") # the electrons
@@ -204,78 +205,71 @@ def build_graph(df, dataset):
 
 
     #########
-    ### CUT 3: recoil cut (H mass)
+    ### CUT 4: recoil cut (H mass)
     #########  
-    #results.append(df_mumu.Histo1D(("mumu_recoil_m_nOne", "", *bins_m), "zmumu_recoil_m"))
+    results.append(df_mumu.Histo1D(("mumu_recoil_m_nOne", "", *bins_m), "zmumu_recoil_m"))
     df_mumu = df_mumu.Filter("zmumu_recoil_m > 100 && zmumu_recoil_m < 150")
-    #results.append(df_mumu.Histo1D(("cutFlow", "", *bins_count), "cut4_mumu"))
+    results.append(df_mumu.Histo1D(("cutFlow", "", *bins_count), "cut4"))
     
-    #results.append(df_ee.Histo1D(("ee_recoil_m_nOne", "", *bins_m), "zee_recoil_m"))
+    results.append(df_ee.Histo1D(("ee_recoil_m_nOne", "", *bins_m), "zee_recoil_m"))
     df_ee = df_ee.Filter("zee_recoil_m > 100 && zee_recoil_m < 150")
-    #results.append(df_ee.Histo1D(("cutFlow", "", *bins_count), "cut4_ee"))
+    #results.append(df_ee.Histo1D(("cutFlow", "", *bins_count), "cut4"))
 
 
-    #####
-    ### CUT 4: momentum
-    #####
-    #results.append(df_mumu.Histo1D(("mumu_p_nOne", "", *bins_p), "zmumu_p"))
-    df_mumu = df_mumu.Filter("zmumu_p > 20 && zmumu_p < 65")
-    #results.append(df_mumu.Histo1D(("cutFlow", "", *bins_count), "cut4_mumu"))
+    #########
+    ### CUT 5: momentum
+    #########
+    results.append(df_mumu.Histo1D(("mumu_p_nOne", "", *bins_p), "zmumu_p"))
+    df_mumu = df_mumu.Filter("zmumu_p > 35 && zmumu_p < 65")
+    results.append(df_mumu.Histo1D(("cutFlow", "", *bins_count), "cut5"))
 
-    #results.append(df.Histo1D(("ee_p_nOne", "", *bins_p), "zee_p"))
-    df_ee = df_ee.Filter("zee_p > 20 && zee_p < 65")
-    #results.append(df_ee.Histo1D(("cutFlow", "", *bins_count), "cut4_ee"))
+    results.append(df_ee.Histo1D(("ee_p_nOne", "", *bins_p), "zee_p"))
+    df_ee = df_ee.Filter("zee_p > 35 && zee_p < 65")
+    #results.append(df_ee.Histo1D(("cutFlow", "", *bins_count), "cut5"))
 
+    #########
+    ### CUT 6: acolinearity
+    #########
+    df_mumu = df_mumu.Define("acoplanarity", "FCCAnalyses::acoplanarity(zmumu_leps)")
+    df_mumu = df_mumu.Define("acolinearity", "FCCAnalyses::acolinearity(zmumu_leps)")
+    results.append(df_mumu.Histo1D(("acolinearity_mumu", "", *bins_aco), "acolinearity"))
 
-    ####
-    ## CUT 5: cos theta(miss)
-    ####
-    #df_mumu = df_mumu.Define("missingEnergy_rp", "FCCAnalyses::missingEnergy(240., ReconstructedParticles)")
-    #df_mumu = df_mumu.Define("missingEnergy", "missingEnergy_rp[0].energy")
-    #df_mumu = df_mumu.Define("cosTheta_miss", "FCCAnalyses::get_cosTheta_miss(missingEnergy_rp)")
-    #results.append(df_mumu.Histo1D(("cosThetaMiss_nOne", "", *bins_cosThetaMiss), "cosTheta_miss_mumu"))
-    #df_mumu = df_mumu.Filter("cosTheta_miss < 0.98")
-    #results.append(df_mumu.Histo1D(("cutFlow", "", *bins_count), "cut5_mumu"))
-
-    #df = df.Define("missingEnergy_rp", "FCCAnalyses::missingEnergy(240., ReconstructedParticles)")
-    #df = df.Define("missingEnergy", "missingEnergy_rp[0].energy")
-    #df = df.Define("cosTheta_miss", "FCCAnalyses::get_cosTheta_miss(missingEnergy_rp)")
-    #results.append(df.Histo1D(("cosThetaMiss_nOne", "", *bins_cosThetaMiss), "cosTheta_miss"))
-    #df = df.Filter("cosTheta_miss < 0.98")
-    #results.append(df.Histo1D(("cutFlow", "", *bins_count), "cut5"))
+    df_mumu = df_mumu.Filter("acolinearity > 0.05")
+    results.append(df_mumu.Histo1D(("cutFlow", "", *bins_count), "cut6"))
 
 
-    ####
-    ## CUT 6: missing energy
-    ####
-    #results.append(df.Histo1D(("missingEnergy_nOne", "", *bins_m), "missingEnergy"))
-    #df = df.Filter("missingEnergy < 115 && (missingEnergy > 95 || missingEnergy < 30 )")
-    #results.append(df.Histo1D(("cutFlow", "", *bins_count), "cut6"))
+    df_ee = df_ee.Define("acoplanarity", "FCCAnalyses::acoplanarity(zee_leps)")
+    df_ee = df_ee.Define("acolinearity", "FCCAnalyses::acolinearity(zee_leps)")
+    results.append(df_ee.Histo1D(("acolinearity_ee", "", *bins_aco), "acolinearity"))
+    
+    df_ee = df_ee.Filter("acolinearity > 0.05")
+    #results.append(df_ee.Histo1D(("cutFlow", "", *bins_count), "cut6"))
 
 
     #########
     ### CUT 7: cut on Z mass
     #########
-    #results.append(df.Histo1D(("zmumu_m_nOne", "", *bins_m), "zmumu_m"))
+    results.append(df_mumu.Histo1D(("zmumu_m_nOne", "", *bins_m), "zmumu_m"))
     df_mumu = df_mumu.Filter("zmumu_m > 80 && zmumu_m < 100")
-    #results.append(df.Histo1D(("cutFlow", "", *bins_count), "cut7"))
+    results.append(df_mumu.Histo1D(("cutFlow", "", *bins_count), "cut7"))
 
-    #results.append(df.Histo1D(("zmumu_m_nOne", "", *bins_m), "zmumu_m"))
+    results.append(df_ee.Histo1D(("zee_m_nOne", "", *bins_m), "zee_m"))
     df_ee = df_ee.Filter("zee_m > 80 && zee_m < 100")
-    #results.append(df.Histo1D(("cutFlow", "", *bins_count), "cut7"))
+    #results.append(df_ee.Histo1D(("cutFlow", "", *bins_count), "cut7"))
 
-    #results.append(df.Histo1D(("zmumu_m_nocat", "", *bins_m_zoom), "zmumu_m"))
+    results.append(df_mumu.Histo1D(("zmumu_m_nocat", "", *bins_m_zoom), "zmumu_m"))
 
 
+    # jet clustering
     for leps, df in [("muons", df_mumu), ("electrons", df_ee)]:
         # define PF candidates collection by removing the leptons
-        df = df.Define("rps_no_muons", f"FCCAnalyses::ReconstructedParticle::remove(ReconstructedParticles, {leps})")
-        df = df.Define("RP_px", "FCCAnalyses::ReconstructedParticle::get_px(rps_no_muons)")
-        df = df.Define("RP_py", "FCCAnalyses::ReconstructedParticle::get_py(rps_no_muons)")
-        df = df.Define("RP_pz","FCCAnalyses::ReconstructedParticle::get_pz(rps_no_muons)")
-        df = df.Define("RP_e", "FCCAnalyses::ReconstructedParticle::get_e(rps_no_muons)")
-        df = df.Define("RP_m", "FCCAnalyses::ReconstructedParticle::get_mass(rps_no_muons)")
-        df = df.Define("RP_q", "FCCAnalyses::ReconstructedParticle::get_charge(rps_no_muons)")
+        df = df.Define("rps_no_leps", f"FCCAnalyses::ReconstructedParticle::remove(ReconstructedParticles, {leps})")
+        df = df.Define("RP_px", "FCCAnalyses::ReconstructedParticle::get_px(rps_no_leps)")
+        df = df.Define("RP_py", "FCCAnalyses::ReconstructedParticle::get_py(rps_no_leps)")
+        df = df.Define("RP_pz","FCCAnalyses::ReconstructedParticle::get_pz(rps_no_leps)")
+        df = df.Define("RP_e", "FCCAnalyses::ReconstructedParticle::get_e(rps_no_leps)")
+        df = df.Define("RP_m", "FCCAnalyses::ReconstructedParticle::get_mass(rps_no_leps)")
+        df = df.Define("RP_q", "FCCAnalyses::ReconstructedParticle::get_charge(rps_no_leps)")
         df = df.Define("pseudo_jets", "FCCAnalyses::JetClusteringUtils::set_pseudoJets(RP_px, RP_py, RP_pz, RP_e)")
         
         df = df.Define("clustered_jets", "JetClustering::clustering_ee_kt(2, 2, 1, 0)(pseudo_jets)")

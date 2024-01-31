@@ -137,6 +137,7 @@ def build_graph(df, dataset):
     #########
     df = df.Define("missingEnergy_rp", "FCCAnalyses::missingEnergy(240., ReconstructedParticles)")
     df = df.Define("missingEnergy", "missingEnergy_rp[0].energy")
+    results.append(df.Histo1D(("missingEnergy", "", *missEnergy), "missingEnergy"))
     df = df.Define("cosTheta_miss", "FCCAnalyses::get_cosTheta_miss(missingEnergy_rp)")
     results.append(df.Histo1D(("cosThetaMiss_nOne", "", *bins_cosThetaMiss), "cosTheta_miss"))
     df = df.Filter("cosTheta_miss < 0.98")
@@ -208,11 +209,11 @@ def build_graph(df, dataset):
     ### CUT 4: recoil cut (H mass)
     #########  
     results.append(df_mumu.Histo1D(("mumu_recoil_m_nOne", "", *bins_m), "zmumu_recoil_m"))
-    df_mumu = df_mumu.Filter("zmumu_recoil_m > 100 && zmumu_recoil_m < 150")
+    df_mumu = df_mumu.Filter("zmumu_recoil_m > 122")
     results.append(df_mumu.Histo1D(("cutFlow", "", *bins_count), "cut4"))
     
     results.append(df_ee.Histo1D(("ee_recoil_m_nOne", "", *bins_m), "zee_recoil_m"))
-    df_ee = df_ee.Filter("zee_recoil_m > 100 && zee_recoil_m < 150")
+    df_ee = df_ee.Filter("zee_recoil_m > 115 && zee_recoil_m < 135")
     #results.append(df_ee.Histo1D(("cutFlow", "", *bins_count), "cut4"))
 
 
@@ -220,11 +221,11 @@ def build_graph(df, dataset):
     ### CUT 5: momentum
     #########
     results.append(df_mumu.Histo1D(("mumu_p_nOne", "", *bins_p), "zmumu_p"))
-    df_mumu = df_mumu.Filter("zmumu_p > 35 && zmumu_p < 65")
+    df_mumu = df_mumu.Filter("zmumu_p > 35 && zmumu_p < 60")
     results.append(df_mumu.Histo1D(("cutFlow", "", *bins_count), "cut5"))
 
     results.append(df_ee.Histo1D(("ee_p_nOne", "", *bins_p), "zee_p"))
-    df_ee = df_ee.Filter("zee_p > 35 && zee_p < 65")
+    df_ee = df_ee.Filter("zee_p > 35 && zee_p < 60")
     #results.append(df_ee.Histo1D(("cutFlow", "", *bins_count), "cut5"))
 
     #########
@@ -250,11 +251,11 @@ def build_graph(df, dataset):
     ### CUT 7: cut on Z mass
     #########
     results.append(df_mumu.Histo1D(("zmumu_m_nOne", "", *bins_m), "zmumu_m"))
-    df_mumu = df_mumu.Filter("zmumu_m > 80 && zmumu_m < 100")
+    df_mumu = df_mumu.Filter("zmumu_m > 85 && zmumu_m < 95")
     results.append(df_mumu.Histo1D(("cutFlow", "", *bins_count), "cut7"))
 
     results.append(df_ee.Histo1D(("zee_m_nOne", "", *bins_m), "zee_m"))
-    df_ee = df_ee.Filter("zee_m > 80 && zee_m < 100")
+    df_ee = df_ee.Filter("zee_m > 85 && zee_m < 95")
     #results.append(df_ee.Histo1D(("cutFlow", "", *bins_count), "cut7"))
 
     results.append(df_mumu.Histo1D(("zmumu_m_nocat", "", *bins_m_zoom), "zmumu_m"))
@@ -290,6 +291,7 @@ def build_graph(df, dataset):
         df = df.Define("dijet_p", "dijet.P()")
         
         results.append(df.Histo1D((f"z{leps}_m", "", *bins_m), "dijet_m"))
+        results.append(df.Histo1D((f"z{leps}_p", "", *bins_m), "dijet_p"))
 
 
     return results, weightsum

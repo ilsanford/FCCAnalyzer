@@ -305,6 +305,7 @@ def build_graph(df, dataset):
         df = df.Define("jet_tlv", "FCCAnalyses::makeLorentzVectors(jet_px, jet_py, jet_pz, jet_e)")
         
         # cut on b jet confidence
+        # TODO resonance?
         df = df.Filter("recojet_isB[0] > 0.97 && recojet_isB[1] > 0.97")
         if leps != "neutrinos":
             results.append(df.Histo1D((f"cutFlow_{'mumu' if leps == 'muons' else 'ee'}", "", *bins_count), "cut8"))
@@ -375,7 +376,7 @@ def build_graph(df, dataset):
         results.append(df.Histo1D((f"cutFlow_{q}", "", *bins_count), "cut5"))
 
     # Z->bb case
-    # TODO pair jets based on momentum
+    # TODO pair jets by calculating distance of each pair to Z, H mass
     
 
     return results, weightsum
@@ -385,8 +386,12 @@ if __name__ == "__main__":
 
     datadict = functions.get_datadicts() # get default datasets
 
-    datasets_sig = ["wzp6_ee_nunuH_Hbb_ecm240", "wzp6_ee_eeH_Hbb_ecm240", "wzp6_ee_tautauH_Hbb_ecm240", "wzp6_ee_ccH_Hbb_ecm240", "wzp6_ee_bbH_Hbb_ecm240", "wzp6_ee_qqH_Hbb_ecm240", "wzp6_ee_ssH_Hbb_ecm240", "wzp6_ee_mumuH_Hbb_ecm240"]
-    datasets_bkg = ["p8_ee_WW_ecm240", "p8_ee_ZZ_ecm240"]# "wzp6_ee_mumu_ecm240", "wzp6_ee_tautau_ecm240", "wzp6_egamma_eZ_Zmumu_ecm240", "wzp6_gammae_eZ_Zmumu_ecm240", "wzp6_gaga_mumu_60_ecm240", "wzp6_gaga_tautau_60_ecm240", "wzp6_ee_nuenueZ_ecm240"]
+    Zprods = ["ee", "mumu", "tautau", "nunu", "qq", "ss", "cc", "bb"] 
+    bb_sig = [f"wzp6_ee_{i}H_Hbb_ecm240" for i in Zprods]
+    cc_sig = [f"wzp6_ee_{i}H_Hcc_ecm240" for i in Zprods]
+    gg_sig = [f"wzp6_ee_{i}H_Hgg_ecm240" for i in Zprods]
+    
+    datasets_bkg = ["p8_ee_WW_ecm240", "p8_ee_ZZ_ecm240", "wzp6_ee_mumu_ecm240", "wzp6_ee_tautau_ecm240", "wzp6_egamma_eZ_Zmumu_ecm240", "wzp6_gammae_eZ_Zmumu_ecm240", "wzp6_gaga_mumu_60_ecm240", "wzp6_gaga_tautau_60_ecm240", "wzp6_ee_nuenueZ_ecm240"]
 
-    datasets_to_run = datasets_sig + datasets_bkg
+    datasets_to_run = bb_sig + datasets_bkg[:2]
     result = functions.build_and_run(datadict, datasets_to_run, build_graph, f"output_h_bb.root", args, norm=True, lumi=7200000)

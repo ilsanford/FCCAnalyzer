@@ -175,15 +175,18 @@ def build_graph(df, dataset):
     select_nunu = "muons_no == 0 && electrons_no == 0 && missingEnergy > 95 && missingEnergy < 115"
     select_qq = f"! ( ({select_mumu}) || ({select_ee}) || ({select_nunu}) ) && muons_no == 0 && electrons_no == 0"
     
-    df_mumu = df.Filter(select_mumu)
-    df_ee   = df.Filter(select_ee)
-    df_nunu = df.Filter(select_nunu)
-    df_qq   = df.Filter(select_qq)
+    df_mumu   = df.Filter(select_mumu)
+    df_ee     = df.Filter(select_ee)
+    df_nunu   = df.Filter(select_nunu)
+    df_quarks = df.Filter(select_qq)
     
     results.append(df_mumu.Histo1D(("cutFlow_mumu", "", *bins_count), "cut2"))
     results.append(df_ee.Histo1D(("cutFlow_ee", "", *bins_count), "cut2"))
     results.append(df_nunu.Histo1D(("cutFlow_nunu", "", *bins_count), "cut2"))
-    results.append(df_qq.Histo1D(("cutFlow_qq", "", *bins_count), "cut2"))
+    results.append(df_quarks.Histo1D(("cutFlow_bb", "", *bins_count), "cut2"))
+    results.append(df_quarks.Histo1D(("cutFlow_cc", "", *bins_count), "cut2"))
+    results.append(df_quarks.Histo1D(("cutFlow_ss", "", *bins_count), "cut2"))
+    results.append(df_quarks.Histo1D(("cutFlow_qq", "", *bins_count), "cut2"))
 
 
     #########
@@ -313,14 +316,67 @@ def build_graph(df, dataset):
         df = df.Define("dijet_m", "dijet.M()")
         df = df.Define("dijet_p", "dijet.P()")
         
-        results.append(df.Histo1D((f"z{leps}_m", "", *bins_m), "dijet_m"))
-        results.append(df.Histo1D((f"z{leps}_p", "", *bins_m), "dijet_p"))
+        results.append(df.Histo1D((f"h{leps}_m", "", *bins_m), "dijet_m"))
+        results.append(df.Histo1D((f"h{leps}_p", "", *bins_m), "dijet_p"))
         
         # for neutrinos, cut on Higgs mass
         if leps == "neutrinos":
             df = df.Filter("dijet_m > 120 && dijet_m < 128")
             results.append(df.Histo1D(("cutFlow_nunu", "", *bins_count), "cut4"))
+    
+    # Z->qq analyses
+    # clustering and flavour tagging
+    df_quarks = jet4Cluster.define(df_quarks)
+    df_quarks = jet4Flavour.define_and_inference(df_quarks)
+    df_quarks = df_quarks.Define("jet_tlv", "FCCAnalyses::makeLorentzVectors(jet_px, jet_py, jet_pz, jet_e)")
+    
+    df_quarks = df_quarks.Define("bbidx", "FCCAnalyses::getMaxAndSecondMaxIdx(recojet_isB)")
+    df_quarks = df_quarks.Define("ssidx", "FCCAnalyses::getMaxAndSecondMaxIdx(recojet_isS)")
+    df_quarks = df_quarks.Define("ccidx", "FCCAnalyses::getMaxAndSecondMaxIdx(recojet_isC)")
+    df_quarks = df_quarks.Define("qqidx", "FCCAnalyses::getMaxAndSecondMaxIdx(recojet_isQ)")
+    
+    # sort by tag
+    # special case ZH->bbbb
+    df_bb = df_quarks.Filter("recojet_isB[0] > 0.97 && recojet_isB[1] > 0.97 && recojet_isB[2] > 0.97 && recojet_isB[3] > 0.97")
+    # make sure that there are 2 b jets
+    df_quarks = df_quarks.Filter("recojet_isB[bbidx[0]] > 0.97 && recojet_isB[bbidx[1]] > 0.97")
+    # filter by other jet types
+    df_cc = df_quarks.Filter("recojet_isC[ccidx[0]] > 0.97 && recojet_isC[ccidx[1]] > 0.97")
+    df_ss = df_quarks.Filter("recojet_isS[ssidx[0]] > 0.97 && recojet_isS[ssidx[1]] > 0.97")
+    df_qq = df_quarks.Filter("recojet_isQ[qqidx[0]] > 0.97 && recojet_isQ[qqidx[1]] > 0.97")
+    
+    results.append(df_bb.Histo1D(("cutFlow_bb", "", *bins_count), "cut3"))
+    results.append(df_cc.Histo1D(("cutFlow_cc", "", *bins_count), "cut3"))
+    results.append(df_ss.Histo1D(("cutFlow_ss", "", *bins_count), "cut3"))
+    results.append(df_qq.Histo1D(("cutFlow_qq", "", *bins_count), "cut3"))
+    
+    # Z->cc/ss/qq case
+    for q, df in [("cc", df_cc), ("ss", df_ss), ("qq", df_qq)]:
+        # compute Z and H masses and momenta
+        df = df.Define("z_dijet", f"jet_tlv[{q}idx[0]] + jet_tlv[{q}idx[1]]")
+        df = df.Define("h_dijet", f"jet_tlv[bbidx[0]] + jet_tlv[bbidx[1]]")
+        
+        df = df.Define("z_dijet_m", "z_dijet.M()")
+        df = df.Define("z_dijet_p", "z_dijet.P()")
+        df = df.Define("h_dijet_m", "h_dijet.M()")
+        df = df.Define("h_dijet_p", "h_dijet.P()")
+        
+        results.append(df.Histo1D((f"z{q}_m", "", *bins_m), "z_dijet_m"))
+        results.append(df.Histo1D((f"h{q}_m", "", *bins_m), "h_dijet_m"))
+        results.append(df.Histo1D((f"z{q}_p", "", *bins_m), "z_dijet_p"))
+        results.append(df.Histo1D((f"h{q}_p", "", *bins_m), "h_dijet_p"))
+        
+        # filter on Z mass
+        df = df.Filter("z_dijet_m > 85 && z_dijet_m < 95")
+        results.append(df.Histo1D((f"cutFlow_{q}", "", *bins_count), "cut4"))
+        
+        # filter on H mass
+        df = df.Filter("h_dijet_m > 115 && h_dijet_m < 135")
+        results.append(df.Histo1D((f"cutFlow_{q}", "", *bins_count), "cut5"))
 
+    # Z->bb case
+    # TODO pair jets based on momentum
+    
 
     return results, weightsum
 

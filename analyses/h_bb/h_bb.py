@@ -1,9 +1,12 @@
-
 import functions
 import helpers
 import ROOT
 import argparse
 import logging
+
+import helper_jetclustering
+import helper_flavourtagger
+
 
 logger = logging.getLogger("fcclogger")
 
@@ -43,6 +46,17 @@ bins_cos = (100, -1, 1)
 bins_aco = (1000,-360,360)
 bins_cosThetaMiss = (10000, 0, 1)
 
+# setup clustering and flavour tagging
+# 2 jets
+jet2Cluster = helper_jetclustering.ExclusiveJetClusteringHelper(2, collection="rps_no_leps")
+jet2Flavour = helper_flavourtagger.JetFlavourHelper(jet2Cluster.jets, jet2Cluster.constituents)
+# 4 jets
+jet4Cluster = helper_jetclustering.ExclusiveJetClusteringHelper(4, collection="ReconstructedParticles")
+jet4Flavour = helper_flavourtagger.JetFlavourHelper(jet4Cluster.jets, jet4Cluster.constituents)
+
+path = "data/flavourtagger/fccee_flavtagging_edm4hep_wc_v1"
+jet2Flavour.load(f"{path}.json", f"{path}.onnx")
+jet4Flavour.load(f"{path}.json", f"{path}.onnx")
 
 
 def build_graph(df, dataset):
@@ -145,7 +159,7 @@ def build_graph(df, dataset):
     results.append(df.Histo1D(("missingEnergy", "", *missEnergy), "missingEnergy"))
     results.append(df.Histo1D(("cosThetaMiss_nOne", "", *bins_cosThetaMiss), "cosTheta_miss"))
     
-    df = df.Filter("cosTheta_miss < 0.98")
+    df = df.Filter("cosTheta_miss < 0.96")
 
     results.append(df.Histo1D(("cutFlow_mumu", "", *bins_count), "cut1"))
     results.append(df.Histo1D(("cutFlow_ee", "", *bins_count), "cut1"))
@@ -158,8 +172,8 @@ def build_graph(df, dataset):
     #########
     select_mumu = "muons_no == 2 && electrons_no == 0 && missingEnergy < 30"
     select_ee   = "muons_no == 0 && electrons_no == 2 && missingEnergy < 30"
-    select_nunu = "muons_no == 0 && electrons_no == 0 && missingEnergy > 95"
-    select_qq = f"! ( ({select_mumu}) || ({select_ee}) || ({select_nunu}) )"
+    select_nunu = "muons_no == 0 && electrons_no == 0 && missingEnergy > 95 && missingEnergy < 115"
+    select_qq = f"! ( ({select_mumu}) || ({select_ee}) || ({select_nunu}) ) && muons_no == 0 && electrons_no == 0"
     
     df_mumu = df.Filter(select_mumu)
     df_ee   = df.Filter(select_ee)
@@ -282,33 +296,48 @@ def build_graph(df, dataset):
         else:
             df = df.Alias("rps_no_leps", "ReconstructedParticles")
         
-        df = df.Define("RP_px", "FCCAnalyses::ReconstructedParticle::get_px(rps_no_leps)")
-        df = df.Define("RP_py", "FCCAnalyses::ReconstructedParticle::get_py(rps_no_leps)")
-        df = df.Define("RP_pz","FCCAnalyses::ReconstructedParticle::get_pz(rps_no_leps)")
-        df = df.Define("RP_e", "FCCAnalyses::ReconstructedParticle::get_e(rps_no_leps)")
-        df = df.Define("RP_m", "FCCAnalyses::ReconstructedParticle::get_mass(rps_no_leps)")
-        df = df.Define("RP_q", "FCCAnalyses::ReconstructedParticle::get_charge(rps_no_leps)")
-        df = df.Define("pseudo_jets", "FCCAnalyses::JetClusteringUtils::set_pseudoJets(RP_px, RP_py, RP_pz, RP_e)")
+        #df = df.Define("RP_px", "FCCAnalyses::ReconstructedParticle::get_px(rps_no_leps)")
+        #df = df.Define("RP_py", "FCCAnalyses::ReconstructedParticle::get_py(rps_no_leps)")
+        #df = df.Define("RP_pz","FCCAnalyses::ReconstructedParticle::get_pz(rps_no_leps)")
+        #df = df.Define("RP_e", "FCCAnalyses::ReconstructedParticle::get_e(rps_no_leps)")
+        #df = df.Define("RP_m", "FCCAnalyses::ReconstructedParticle::get_mass(rps_no_leps)")
+        #df = df.Define("RP_q", "FCCAnalyses::ReconstructedParticle::get_charge(rps_no_leps)")
+        #df = df.Define("pseudo_jets", "FCCAnalyses::JetClusteringUtils::set_pseudoJets(RP_px, RP_py, RP_pz, RP_e)")
         
-        df = df.Define("clustered_jets", "JetClustering::clustering_ee_kt(2, 2, 1, 0)(pseudo_jets)")
-        df = df.Define("jets", "FCCAnalyses::JetClusteringUtils::get_pseudoJets(clustered_jets)")
-        df = df.Define("jetconstituents", "FCCAnalyses::JetClusteringUtils::get_constituents(clustered_jets)")
-        df = df.Define("jets_e", "FCCAnalyses::JetClusteringUtils::get_e(jets)")
-        df = df.Define("jets_px", "FCCAnalyses::JetClusteringUtils::get_px(jets)")
-        df = df.Define("jets_py", "FCCAnalyses::JetClusteringUtils::get_py(jets)")
-        df = df.Define("jets_pz", "FCCAnalyses::JetClusteringUtils::get_pz(jets)")
-        df = df.Define("jets_m", "FCCAnalyses::JetClusteringUtils::get_m(jets)")
+        #df = df.Define("clustered_jets", "JetClustering::clustering_ee_kt(2, 2, 1, 0)(pseudo_jets)")
+        #df = df.Define("jets", "FCCAnalyses::JetClusteringUtils::get_pseudoJets(clustered_jets)")
+        #df = df.Define("jetconstituents", "FCCAnalyses::JetClusteringUtils::get_constituents(clustered_jets)")
+        #df = df.Define("jets_e", "FCCAnalyses::JetClusteringUtils::get_e(jets)")
+        #df = df.Define("jets_px", "FCCAnalyses::JetClusteringUtils::get_px(jets)")
+        #df = df.Define("jets_py", "FCCAnalyses::JetClusteringUtils::get_py(jets)")
+        #df = df.Define("jets_pz", "FCCAnalyses::JetClusteringUtils::get_pz(jets)")
+        #df = df.Define("jets_m", "FCCAnalyses::JetClusteringUtils::get_m(jets)")
         
-        df = df.Define("jet1", "ROOT::Math::PxPyPzEVector(jets_px[0], jets_py[0], jets_pz[0], jets_e[0])")
-        df = df.Define("jet2", "ROOT::Math::PxPyPzEVector(jets_px[1], jets_py[1], jets_pz[1], jets_e[1])")
-        df = df.Define("jet1_p", "jet1.P()")
-        df = df.Define("jet2_p", "jet2.P()")
-        df = df.Define("dijet", "jet1+jet2")
+        #df = df.Define("jet1", "ROOT::Math::PxPyPzEVector(jets_px[0], jets_py[0], jets_pz[0], jets_e[0])")
+        #df = df.Define("jet2", "ROOT::Math::PxPyPzEVector(jets_px[1], jets_py[1], jets_pz[1], jets_e[1])")
+        #df = df.Define("jet1_p", "jet1.P()")
+        #df = df.Define("jet2_p", "jet2.P()")
+        #df = df.Define("dijet", "jet1+jet2")
+        #df = df.Define("dijet_m", "dijet.M()")
+        #df = df.Define("dijet_p", "dijet.P()")
+        
+        # clustering and flavour tagging
+        df = jet2Cluster.define(df)
+        df = jet2Flavour.define_and_inference(df)
+        df = df.Define("jet_tlv", "FCCAnalyses::makeLorentzVectors(jet_px, jet_py, jet_pz, jet_e)")
+        
+        # calculate dijet m and p
+        df = df.Define("dijet", "jet_tlv[0] + jet_tlv[1]")
         df = df.Define("dijet_m", "dijet.M()")
         df = df.Define("dijet_p", "dijet.P()")
         
         results.append(df.Histo1D((f"z{leps}_m", "", *bins_m), "dijet_m"))
         results.append(df.Histo1D((f"z{leps}_p", "", *bins_m), "dijet_p"))
+        
+        # for neutrinos, cut on Higgs mass
+        if leps == "neutrinos":
+            df = df.Filter("dijet_m > 120 && dijet_m < 128")
+            results.append(df.Histo1D(("cutFlow_nunu", "", *bins_count), "cut3"))
 
 
     return results, weightsum

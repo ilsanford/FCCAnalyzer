@@ -162,8 +162,8 @@ def build_graph(df, dataset):
     #########
     select_mumu = "muons_no == 2 && electrons_no == 0 && missingEnergy < 30"
     select_ee   = "muons_no == 0 && electrons_no == 2 && missingEnergy < 30"
-    select_nunu = "muons_no == 0 && electrons_no == 0 && missingEnergy > 95 && missingEnergy < 115"
-    select_qq = f"! ( ({select_mumu}) || ({select_ee}) || ({select_nunu}) ) && muons_no == 0 && electrons_no == 0"
+    select_nunu = "muons_no == 0 && electrons_no == 0 && missingEnergy > 102 && missingEnergy < 115"
+    select_qq   = "muons_no == 0 && electrons_no == 0 && missingEnergy < 35"
     
     df_mumu   = df.Filter(select_mumu)
     df_ee     = df.Filter(select_ee)
@@ -311,7 +311,7 @@ def build_graph(df, dataset):
         
         # for neutrinos, cut on Higgs mass
         if leps == "neutrinos":
-            df = df.Filter("dijet_m > 120 && dijet_m < 128")
+            df = df.Filter("dijet_m > 115 && dijet_m < 128")
             results.append(df.Histo1D(("cutFlow_nunu", "", *bins_count), "cut4"))
     
     
@@ -368,7 +368,7 @@ def build_graph(df, dataset):
     
     # sort by tag
     # special case ZH->bbbb
-    df_bb = df_quarks.Filter("recojet_isB[0] > 0.95 && recojet_isB[1] > 0.95 && recojet_isB[2] > 0.95 && recojet_isB[3] > 0.95")
+    df_bb = df_quarks.Filter("recojet_isB[0] > 0.96 && recojet_isB[1] > 0.96 && recojet_isB[2] > 0.96 && recojet_isB[3] > 0.96")
     results.append(df_bb.Histo1D(("cutFlow_bb", "", *bins_count), "cut3"))
     
     # make sure that there are 2 b jets
@@ -398,10 +398,10 @@ def build_graph(df, dataset):
         df = df.Define("h_dijet_m", "h_dijet.M()")
         df = df.Define("h_dijet_p", "h_dijet.P()")
         
-        results.append(df.Histo1D((f"z{q}_m", "", *bins_m), "z_dijet_m"))
-        results.append(df.Histo1D((f"h{q}_m", "", *bins_m), "h_dijet_m"))
-        results.append(df.Histo1D((f"z{q}_p", "", *bins_m), "z_dijet_p"))
-        results.append(df.Histo1D((f"h{q}_p", "", *bins_m), "h_dijet_p"))
+        results.append(df.Histo1D((f"z{q}_z_m", "", *bins_m), "z_dijet_m"))
+        results.append(df.Histo1D((f"z{q}_h_m", "", *bins_m), "h_dijet_m"))
+        results.append(df.Histo1D((f"z{q}_z_p", "", *bins_m), "z_dijet_p"))
+        results.append(df.Histo1D((f"z{q}_h_p", "", *bins_m), "h_dijet_p"))
         
         # filter on Z mass
         df = df.Filter("z_dijet_m > 85 && z_dijet_m < 95")
@@ -441,17 +441,17 @@ def build_graph(df, dataset):
     df_bb = df_bb.Define("h_dijet_m", "h_dijet.M()")
     df_bb = df_bb.Define("h_dijet_p", "h_dijet.P()")
     
-    results.append(df_bb.Histo1D(("zbb_m", "", *bins_m), "z_dijet_m"))
-    results.append(df_bb.Histo1D(("zbb_p", "", *bins_m), "z_dijet_p"))
-    results.append(df_bb.Histo1D(("hbb_m", "", *bins_m), "h_dijet_m"))
-    results.append(df_bb.Histo1D(("hbb_p", "", *bins_m), "h_dijet_p"))
+    results.append(df_bb.Histo1D(("zbb_z_m", "", *bins_m), "z_dijet_m"))
+    results.append(df_bb.Histo1D(("zbb_z_p", "", *bins_m), "z_dijet_p"))
+    results.append(df_bb.Histo1D(("zbb_h_m", "", *bins_m), "h_dijet_m"))
+    results.append(df_bb.Histo1D(("zbb_h_p", "", *bins_m), "h_dijet_p"))
     
     # filter on Z mass
-    df_bb = df_bb.Filter("z_dijet_m > 85 && z_dijet_m < 95")
+    df_bb = df_bb.Filter("z_dijet_p > 35 && z_dijet_p < 60")
     results.append(df_bb.Histo1D(("cutFlow_bb", "", *bins_count), "cut4"))
     
     # filter on H mass
-    df_bb = df_bb.Filter("h_dijet_m > 115 && h_dijet_m < 135")
+    df_bb = df_bb.Filter("h_dijet_m > 115 && h_dijet_m < 130")
     results.append(df_bb.Histo1D(("cutFlow_bb", "", *bins_count), "cut5"))
     
     
@@ -473,5 +473,4 @@ if __name__ == "__main__":
     datasets_bkg = ["p8_ee_WW_ecm240", "p8_ee_ZZ_ecm240", "wzp6_ee_mumu_ecm240", "wzp6_ee_tautau_ecm240", "wzp6_egamma_eZ_Zmumu_ecm240", "wzp6_gammae_eZ_Zmumu_ecm240", "wzp6_gaga_mumu_60_ecm240", "wzp6_gaga_tautau_60_ecm240", "wzp6_ee_nuenueZ_ecm240"]
 
     datasets_to_run = bb_sig + cc_sig + gg_sig + datasets_bkg[:2]
-
     result = functions.build_and_run(datadict, datasets_to_run, build_graph, f"output_h_bb.root", args, norm=True, lumi=7200000)

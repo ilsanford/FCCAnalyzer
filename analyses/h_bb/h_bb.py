@@ -146,7 +146,7 @@ def build_graph(df, dataset):
     results.append(df.Histo1D(("missingEnergy", "", *missEnergy), "missingEnergy"))
     results.append(df.Histo1D(("cosThetaMiss_nOne", "", *bins_cosThetaMiss), "cosTheta_miss"))
     
-    df = df.Filter("cosTheta_miss < 0.96")
+    #df = df.Filter("cosTheta_miss < 0.96")
 
     results.append(df.Histo1D(("cutFlow_mumu", "", *bins_count), "cut1"))
     results.append(df.Histo1D(("cutFlow_ee", "", *bins_count), "cut1"))
@@ -257,7 +257,7 @@ def build_graph(df, dataset):
     df_mumu = df_mumu.Define("acolinearity", "FCCAnalyses::acolinearity(zmumu_leps)")
     results.append(df_mumu.Histo1D(("acolinearity_mumu", "", *bins_aco), "acolinearity"))
 
-    df_mumu = df_mumu.Filter("acolinearity > 0.05")
+    #df_mumu = df_mumu.Filter("acolinearity > 0.05")
     results.append(df_mumu.Histo1D(("cutFlow_mumu", "", *bins_count), "cut6"))
 
 
@@ -265,7 +265,7 @@ def build_graph(df, dataset):
     df_ee = df_ee.Define("acolinearity", "FCCAnalyses::acolinearity(zee_leps)")
     results.append(df_ee.Histo1D(("acolinearity_ee", "", *bins_aco), "acolinearity"))
     
-    df_ee = df_ee.Filter("acolinearity > 0.05")
+    #df_ee = df_ee.Filter("acolinearity > 0.05")
     results.append(df_ee.Histo1D(("cutFlow_ee", "", *bins_count), "cut6"))
 
 
@@ -295,7 +295,6 @@ def build_graph(df, dataset):
         df = df.Define("jet_tlv", "FCCAnalyses::makeLorentzVectors(jet_px, jet_py, jet_pz, jet_e)")
         
         # cut on b jet confidence
-        # TODO resonance?
         df = df.Filter("recojet_isB[0] > 0.97 && recojet_isB[1] > 0.97")
         if leps != "neutrinos":
             results.append(df.Histo1D((f"cutFlow_{'mumu' if leps == 'muons' else 'ee'}", "", *bins_count), "cut8"))
@@ -315,11 +314,34 @@ def build_graph(df, dataset):
             df = df.Filter("dijet_m > 120 && dijet_m < 128")
             results.append(df.Histo1D(("cutFlow_nunu", "", *bins_count), "cut4"))
     
+    
+    
     # Z->qq analyses
-    # clustering and flavour tagging
+    # clustering
     df_quarks = jet4Cluster.define(df_quarks)
+    
+    # build Z resonance from jets
+    #df_quarks = df_quarks.Define("zbuilder_result", "FCCAnalyses::resonanceBuilder_mass_recoil(91.2, 125, 0, 240, false)(jet, MCRecoAssociations0, MCRecoAssociations1, ReconstructedParticles, Particle, Particle0, Particle1)")
+    #df_quarks = df_quarks.Filter("zbuilder_result.size() > 0")
+    
+    #results.append(df_quarks.Histo1D(("cutFlow_bb", "", *bins_count), "cut3"))
+    #results.append(df_quarks.Histo1D(("cutFlow_cc", "", *bins_count), "cut3"))
+    #results.append(df_quarks.Histo1D(("cutFlow_ss", "", *bins_count), "cut3"))
+    #results.append(df_quarks.Histo1D(("cutFlow_qq", "", *bins_count), "cut3"))
+    
+    #df_quarks = df_quarks.Define("recoZ", "ROOT::VecOps::RVec<edm4hep::ReconstructedParticleData>{zbuilder_result[0]}") # the Z
+    #df_quarks = df_quarks.Define("recoZ_m", "FCCAnalyses::ReconstructedParticle::get_mass(recoZ)[0]")
+    #df_quarks = df_quarks.Define("recoZ_p", "FCCAnalyses::ReconstructedParticle::get_p(recoZ)[0]")
+    
+    #results.append(df_quarks.Histo1D(("recoZ_m", "", *bins_m), "recoZ_m"))
+    
+    
+    # flavour tagging
     df_quarks = jet4Flavour.define_and_inference(df_quarks)
     df_quarks = df_quarks.Define("jet_tlv", "FCCAnalyses::makeLorentzVectors(jet_px, jet_py, jet_pz, jet_e)")
+    
+    df_quarks = df_quarks.Define("bprob_all", "recojet_isB[0] * recojet_isB[1] * recojet_isB[2] * recojet_isB[3]")
+    results.append(df_quarks.Histo1D(("bprob_all", "", *bins_prob), "bprob_all"))
     
     df_quarks = df_quarks.Define("bbidx", "FCCAnalyses::getMaxAndSecondMaxIdx(recojet_isB)")
     df_quarks = df_quarks.Define("ssidx", "FCCAnalyses::getMaxAndSecondMaxIdx(recojet_isS)")
@@ -346,11 +368,12 @@ def build_graph(df, dataset):
     
     # sort by tag
     # special case ZH->bbbb
-    df_bb = df_quarks.Filter("recojet_isB[0] > 0.97 && recojet_isB[1] > 0.97 && recojet_isB[2] > 0.97 && recojet_isB[3] > 0.97")
+    df_bb = df_quarks.Filter("recojet_isB[0] > 0.95 && recojet_isB[1] > 0.95 && recojet_isB[2] > 0.95 && recojet_isB[3] > 0.95")
+    results.append(df_bb.Histo1D(("cutFlow_bb", "", *bins_count), "cut3"))
+    
     # make sure that there are 2 b jets
     df_quarks = df_quarks.Filter("bprob1 > 0.97 && bprob2 > 0.97")
     
-    results.append(df_bb.Histo1D(("cutFlow_bb", "", *bins_count), "cut3"))
     results.append(df_quarks.Histo1D(("cutFlow_cc", "", *bins_count), "cut3"))
     results.append(df_quarks.Histo1D(("cutFlow_ss", "", *bins_count), "cut3"))
     results.append(df_quarks.Histo1D(("cutFlow_qq", "", *bins_count), "cut3"))
@@ -360,7 +383,6 @@ def build_graph(df, dataset):
     df_ss = df_quarks.Filter("sprob1 > 0.7 && sprob2 > 0.2")
     df_qq = df_quarks.Filter("qprob1 > 0.7 && qprob2 > 0.4")
     
-    results.append(df_bb.Histo1D(("cutFlow_bb", "", *bins_count), "cut4"))
     results.append(df_cc.Histo1D(("cutFlow_cc", "", *bins_count), "cut4"))
     results.append(df_ss.Histo1D(("cutFlow_ss", "", *bins_count), "cut4"))
     results.append(df_qq.Histo1D(("cutFlow_qq", "", *bins_count), "cut4"))
@@ -369,7 +391,7 @@ def build_graph(df, dataset):
     for q, df in [("cc", df_cc), ("ss", df_ss), ("qq", df_qq)]:
         # compute Z and H masses and momenta
         df = df.Define("z_dijet", f"jet_tlv[{q}idx[0]] + jet_tlv[{q}idx[1]]")
-        df = df.Define("h_dijet", f"jet_tlv[bbidx[0]] + jet_tlv[bbidx[1]]")
+        df = df.Define("h_dijet", "jet_tlv[bbidx[0]] + jet_tlv[bbidx[1]]")
         
         df = df.Define("z_dijet_m", "z_dijet.M()")
         df = df.Define("z_dijet_p", "z_dijet.P()")
@@ -390,9 +412,50 @@ def build_graph(df, dataset):
         results.append(df.Histo1D((f"cutFlow_{q}", "", *bins_count), "cut6"))
 
     # Z->bb case
-    # TODO pair jets by calculating distance of each pair to Z, H mass
+    # pair jets based on distance to Z and H masses
+    df_bb = df_bb.Define("zh_min_idx", """
+            FCCAnalyses::Vec_i min{0, 0, 0, 0};
+            float distm = INFINITY;
+            for (int i = 0; i < 3; i++)
+                for (int j = i + 1; j < 4; j++)
+                    for (int k = 0; k < 3; k++) {
+                        if (i == k || j == k) continue;
+                        for (int l = k + 1; l < 4; l++) {
+                            if (i == l || j == i) continue;
+                            float distz = (jet_tlv[i] + jet_tlv[j]).M() - 91.2;
+                            float disth = (jet_tlv[k] + jet_tlv[l]).M() - 125;
+                            if (distz*distz + disth*disth < distm) {
+                                distm = distz*distz + disth*disth;
+                                min[0] = i; min[1] = j; min[2] = k; min[3] = l;
+                            }
+                        }
+                    }
+            return min;""")
     
-
+    # compute Z and H masses and momenta
+    df_bb = df_bb.Define("z_dijet", "jet_tlv[zh_min_idx[0]] + jet_tlv[zh_min_idx[1]]")
+    df_bb = df_bb.Define("h_dijet", "jet_tlv[zh_min_idx[2]] + jet_tlv[zh_min_idx[3]]")
+    
+    df_bb = df_bb.Define("z_dijet_m", "z_dijet.M()")
+    df_bb = df_bb.Define("z_dijet_p", "z_dijet.P()")
+    df_bb = df_bb.Define("h_dijet_m", "h_dijet.M()")
+    df_bb = df_bb.Define("h_dijet_p", "h_dijet.P()")
+    
+    results.append(df_bb.Histo1D(("zbb_m", "", *bins_m), "z_dijet_m"))
+    results.append(df_bb.Histo1D(("zbb_p", "", *bins_m), "z_dijet_p"))
+    results.append(df_bb.Histo1D(("hbb_m", "", *bins_m), "h_dijet_m"))
+    results.append(df_bb.Histo1D(("hbb_p", "", *bins_m), "h_dijet_p"))
+    
+    # filter on Z mass
+    df_bb = df_bb.Filter("z_dijet_m > 85 && z_dijet_m < 95")
+    results.append(df_bb.Histo1D(("cutFlow_bb", "", *bins_count), "cut4"))
+    
+    # filter on H mass
+    df_bb = df_bb.Filter("h_dijet_m > 115 && h_dijet_m < 135")
+    results.append(df_bb.Histo1D(("cutFlow_bb", "", *bins_count), "cut5"))
+    
+    
+    
     return results, weightsum
 
 
@@ -405,9 +468,10 @@ if __name__ == "__main__":
     cc_sig = [f"wzp6_ee_{i}H_Hcc_ecm240" for i in Zprods]
     gg_sig = [f"wzp6_ee_{i}H_Hgg_ecm240" for i in Zprods]
     
-    quark_test = ["wzp6_ee_qqH_Hbb_ecm240", "wzp6_ee_ssH_Hbb_ecm240", "wzp6_ee_ccH_Hbb_ecm240"]
+    quark_test = ["wzp6_ee_qqH_Hbb_ecm240", "wzp6_ee_ssH_Hbb_ecm240", "wzp6_ee_ccH_Hbb_ecm240", "wzp6_ee_bbH_Hbb_ecm240"]
     
     datasets_bkg = ["p8_ee_WW_ecm240", "p8_ee_ZZ_ecm240", "wzp6_ee_mumu_ecm240", "wzp6_ee_tautau_ecm240", "wzp6_egamma_eZ_Zmumu_ecm240", "wzp6_gammae_eZ_Zmumu_ecm240", "wzp6_gaga_mumu_60_ecm240", "wzp6_gaga_tautau_60_ecm240", "wzp6_ee_nuenueZ_ecm240"]
 
-    datasets_to_run = bb_sig + datasets_bkg[:2]
+    datasets_to_run = bb_sig + cc_sig + gg_sig + datasets_bkg[:2]
+
     result = functions.build_and_run(datadict, datasets_to_run, build_graph, f"output_h_bb.root", args, norm=True, lumi=7200000)

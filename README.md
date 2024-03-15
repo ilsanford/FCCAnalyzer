@@ -29,6 +29,33 @@ Examples below make clear the usage of the files and run modes.
 
 The underlying `key4hep` stack version (loaded during `setup.sh` is appended to the `stack_history` file. To fix a `key4hep` release, add the path to the setup script to `stack`, and it will be loaded by default.
 
+# Run the analysis using Slurm
+
+If resources on the local machine are limited, the batch system can be used to parallelize your analysis on multiple machines using the Slurm workload manager at SubMIT. As an example, the cross-section analysis is split in about 20 jobs and submitted to the Slurm queue as follows:
+
+```shell
+python analyses/ewk_z/xsec.py --flavor mumu --submit --nJobs 20
+```
+
+By default it writes the intermediate files to `submit/test` (can be changed by invoking `--jobDir`). To check the status of the jobs, do:
+
+```shell
+python analyses/ewk_z/xsec.py --flavor mumu --status
+```
+
+Once all jobs are completed, you have to merge the files into a single ROOT file:
+
+```shell
+python analyses/ewk_z/xsec.py --flavor mumu --merge
+```
+
+The output of the `--merge` command is a ROOT file, as if you ran interactively.
+
+Note: currently supported only for histograms (not yet with Snapshot).
+
+# Combine environment
+
+To run fits with Combine, see https://github.com/jeyserma/FCCAnalyzer/tree/main/scripts/combine for instructions on how to install and use Combine.
 
 
 # Examples
@@ -121,32 +148,7 @@ python analyses/ewk_w/scripts/setup_combine.py
 
 This generates two files: a ROOT file containing the histograms to be fitted and a text datacard that will tell the fitter how to interpret these histograms.
 
-To run the actual lieklihood fit, we use combinetf, which is the Tensorflow-based version of regular combine (a statistical fitting package used by CMS at the LHC). To install combinetf, execute the following steps once (in a new terminal):
-
-```shell
-# open a new terminal
-cd <path to my FCCAnalyzer>
-cd ../ # go one folder up
-cmssw-cc7
-export SCRAM_ARCH="slc7_amd64_gcc700"
-cmsrel CMSSW_10_6_19_patch2
-cd CMSSW_10_6_19_patch2/src/
-cmsenv
-git clone -o bendavid -b tensorflowfit git@github.com:bendavid/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit
-cd HiggsAnalysis/CombinedLimit
-scram b -j 8
-```
-
-To use combinetf, start from a fresh shell and do (you cannot use the same terminal/shell as FCCAnalyzer):
-
-```shell
-cmssw-cc7
-cd <path to base>
-cd CMSSW_10_6_19_patch2/src/
-cmsenv
-```
-
-Then, you can navigate to your `FCCAnalyzer`, and execute the following steps to perform the fit:
+To run the actual lieklihood fit, we use combinetf, which is the Tensorflow-based version of regular combine (a statistical fitting package used by CMS at the LHC). To install combinetf, follow the steps as described here: https://github.com/jeyserma/FCCAnalyzer/tree/main/scripts/combine. After installation, load the environment in a new shell (you cannot use the same terminal/shell as FCCAnalyzer), and execute the following steps to perform the fit:
 
 ```shell
 cd combine/wmass_kinematic/
@@ -190,22 +192,3 @@ Edit the python (make sure you update the path to the correct header file) and h
 python analyses/<my_analysis_name>/analysis.py
 ```
 
-
-# Combine environment
-Combine requires either CMSSW or can be compiled standalone, but is not compatible with the newest ROOT version, as required for the main analysis with RDataFrame. Therefore, in order to run Combine, one has to load a different environment.
-
-To install Combine (in the FCCAnalyzer directory), execute the following steps:
-
-```shell
-git clone https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit.git --branch 112x HiggsAnalysis/CombinedLimit
-cd HiggsAnalysis/CombinedLimit/
-source env_standalone.sh
-make -j ${nproc}
-cd ../../
-```
-
-In order to run Combine, source the following script (instead of setup.sh):
-
-```shell
-source ./initCombine.sh
-```

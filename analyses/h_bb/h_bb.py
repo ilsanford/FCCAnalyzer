@@ -46,7 +46,7 @@ bins_cos = (100, -1, 1)
 bins_aco = (1000,-360,360)
 bins_cosThetaMiss = (10000, 0, 1)
 
-bins_prob = (100, 0, 1)
+bins_prob = (400, 0, 2)
 bins_pfcand = (200, -10, 10)
 
 # setup clustering and flavour tagging
@@ -253,36 +253,46 @@ def build_graph(df, dataset):
         else:
             df = df.Alias("rps_no_leps", "ReconstructedParticles")
         
-        # clustering and flavour tagging
+        # clustering
         df = jet2Cluster.define(df)
-        df = jet2Flavour.define_and_inference(df)
         df = df.Define("jet_tlv", "FCCAnalyses::makeLorentzVectors(jet_px, jet_py, jet_pz, jet_e)")
-        
-        # cut on b jet confidence
-        df = df.Filter("recojet_isB[0] > 0.97 && recojet_isB[1] > 0.97")
-        if leps != "neutrinos":
-            results.append(df.Histo1D((f"cutFlow_{'mumu' if leps == 'muons' else 'ee'}", "", *bins_count), "cut6"))
-        else:
-            results.append(df.Histo1D(("cutFlow_nunu", "", *bins_count), "cut2"))
         
         # calculate dijet m and p
         df = df.Define("dijet", "jet_tlv[0] + jet_tlv[1]")
         df = df.Define("dijet_m", "dijet.M()")
         df = df.Define("dijet_p", "dijet.P()")
         
-        results.append(df.Histo1D((f"h{leps}_m", "", *bins_m), "dijet_m"))
-        results.append(df.Histo1D((f"h{leps}_p", "", *bins_m), "dijet_p"))
-        
         # for neutrinos, cut on Higgs mass and momentum
         if leps == "neutrinos":
+            results.append(df.Histo1D((f"z{leps}_h_m_nOne", "", *bins_m), "dijet_m"))
+            results.append(df.Histo1D((f"z{leps}_h_p_nOne", "", *bins_m), "dijet_p"))
+            
             df = df.Filter("dijet_p > 40 && dijet_p < 58")
-            results.append(df.Histo1D(("cutFlow_nunu", "", *bins_count), "cut3"))
+            results.append(df.Histo1D(("cutFlow_nunu", "", *bins_count), "cut2"))
             
             df = df.Filter("dijet_m > 115 && dijet_m < 128")
-            results.append(df.Histo1D(("cutFlow_nunu", "", *bins_count), "cut4"))
-        else:
+            results.append(df.Histo1D(("cutFlow_nunu", "", *bins_count), "cut3"))
+        
+        # flavour tagging
+        df = jet2Flavour.define_and_inference(df)
+        
+        # scan cut on b jet confidence
+        for i in range(56):
+            cutoff = i*0.005 + 0.7
+            df = df.Filter(f"recojet_isB[0] > {cutoff} && recojet_isB[1] > {cutoff}")
+            results.append(df.Histo1D((f"scanProb_{leps}{int(i / 20)}", "", *bins_count), f"cut{i%20}"))
+        
+        if leps != "neutrinos":
+            results.append(df.Histo1D((f"cutFlow_{'mumu' if leps == 'muons' else 'ee'}", "", *bins_count), "cut6"))
+            
             # store the final recoil mass of ee and mumu for a fit
-            results.append(df.Histo1D((f"{leps}_final_recoil_m", "", *bins_m), f"z{leps}_recoil_m"))
+            results.append(df.Histo1D((f"z{leps}_final_recoil_m", "", *bins_m), f"z{'mumu' if leps == 'muons' else 'ee'}_recoil_m"))
+        else:
+            results.append(df.Histo1D(("cutFlow_nunu", "", *bins_count), "cut4"))
+        
+        # store final dijet mass and momentum
+        results.append(df.Histo1D((f"z{leps}_h_m", "", *bins_m), "dijet_m"))
+        results.append(df.Histo1D((f"z{leps}_h_p", "", *bins_m), "dijet_p"))
     
     
     
@@ -343,27 +353,48 @@ def build_graph(df, dataset):
     # flavour tagging
     df_quarks = jet4Flavour.define_and_inference(df_quarks)
     
-    df_quarks = df_quarks.Define("Hbb_prob", "recojet_isB[zh_min_idx[2]] + recojet_isB[zh_h_min_idx[3]]")
+    # make sure that there are 2 b jets
+    df_quarks = df_quarks.Define("Hbb_prob1", "recojet_isB[zh_min_idx[2]]")
+    df_quarks = df_quarks.Define("Hbb_prob2", "recojet_isB[zh_min_idx[3]]")
+    df_quarks = df_quarks.Define("Hbb_prob", "Hbb_prob1 + Hbb_prob2")
+    
+    results.append(df_quarks.Graph("Hbb_prob1", "Hbb_prob2"))
     results.append(df_quarks.Histo1D(("Hbb_prob_nOne", "", *bins_prob), "Hbb_prob"))
     
-    df_quarks = df_quarks.Define("Zbb_prob", "recojet_isB[zh_min_idx[0]] + recojet_isB[zh_min_idx[1]]")
-    df_quarks = df_quarks.Define("Zcc_prob", "recojet_isC[zh_min_idx[0]] + recojet_isC[zh_min_idx[1]]")
-    df_quarks = df_quarks.Define("Zss_prob", "recojet_isS[zh_min_idx[0]] + recojet_isS[zh_min_idx[1]]")
-    df_quarks = df_quarks.Define("Zqq_prob", "recojet_isQ[zh_min_idx[0]] + recojet_isQ[zh_min_idx[1]]")
+    df_quarks = df_quarks.Filter("Hbb_prob1 > 0.97 && Hbb_prob2 > 0.97")
     
-    results.append(df_quarks.Histo1D(("Zbb_prob_nOne", "", *bins_prob), "Zbb_prob"))
-    results.append(df_quarks.Histo1D(("Zcc_prob_nOne", "", *bins_prob), "Zcc_prob"))
-    results.append(df_quarks.Histo1D(("Zss_prob_nOne", "", *bins_prob), "Zss_prob"))
-    results.append(df_quarks.Histo1D(("Zqq_prob_nOne", "", *bins_prob), "Zqq_prob"))
-    
-    # make sure that there are 2 b jets
-    df_quarks = df_quarks.Filter("Hbb_prob > 2*0.97")
     results.append(df_quarks.Histo1D(("cutFlow_bb", "", *bins_count), "cut4"))
     results.append(df_quarks.Histo1D(("cutFlow_cc", "", *bins_count), "cut4"))
     results.append(df_quarks.Histo1D(("cutFlow_ss", "", *bins_count), "cut4"))
     results.append(df_quarks.Histo1D(("cutFlow_qq", "", *bins_count), "cut4"))
     
     # sort by tag
+    df_quarks = df_quarks.Define("Zbb_prob1", "recojet_isB[zh_min_idx[0]]")
+    df_quarks = df_quarks.Define("Zbb_prob2", "recojet_isB[zh_min_idx[1]]")
+    df_quarks = df_quarks.Define("Zbb_prob", "Zbb_prob1 + Zbb_prob2")
+    
+    df_quarks = df_quarks.Define("Zcc_prob1", "recojet_isC[zh_min_idx[0]]")
+    df_quarks = df_quarks.Define("Zcc_prob2", "recojet_isC[zh_min_idx[1]]")
+    df_quarks = df_quarks.Define("Zcc_prob", "Zcc_prob1 + Zcc_prob2")
+    
+    df_quarks = df_quarks.Define("Zss_prob1", "recojet_isS[zh_min_idx[0]]")
+    df_quarks = df_quarks.Define("Zss_prob2", "recojet_isS[zh_min_idx[1]]")
+    df_quarks = df_quarks.Define("Zss_prob", "Zss_prob1 + Zss_prob2")
+    
+    df_quarks = df_quarks.Define("Zqq_prob1", "recojet_isQ[zh_min_idx[0]]")
+    df_quarks = df_quarks.Define("Zqq_prob2", "recojet_isQ[zh_min_idx[1]]")
+    df_quarks = df_quarks.Define("Zqq_prob", "Zqq_prob1 + Zqq_prob2")
+    
+    results.append(df_quarks.Graph("Zbb_prob1", "Zbb_prob2"))
+    results.append(df_quarks.Graph("Zcc_prob1", "Zcc_prob2"))
+    results.append(df_quarks.Graph("Zss_prob1", "Zss_prob2"))
+    results.append(df_quarks.Graph("Zqq_prob1", "Zqq_prob2"))
+    
+    results.append(df_quarks.Histo1D(("Zbb_prob_nOne", "", *bins_prob), "Zbb_prob"))
+    results.append(df_quarks.Histo1D(("Zcc_prob_nOne", "", *bins_prob), "Zcc_prob"))
+    results.append(df_quarks.Histo1D(("Zss_prob_nOne", "", *bins_prob), "Zss_prob"))
+    results.append(df_quarks.Histo1D(("Zqq_prob_nOne", "", *bins_prob), "Zqq_prob"))
+    
     df_quarks = df_quarks.Define("best_tag", """
             if (Zbb_prob > Zcc_prob && Zbb_prob > Zss_prob && Zbb_prob > Zqq_prob) {
                 return 0;

@@ -276,11 +276,8 @@ def build_graph(df, dataset):
         # flavour tagging
         df = jet2Flavour.define_and_inference(df)
         
-        # scan cut on b jet confidence
-        for i in range(56):
-            cutoff = i*0.005 + 0.7
-            df = df.Filter(f"recojet_isB[0] > {cutoff} && recojet_isB[1] > {cutoff}")
-            results.append(df.Histo1D((f"scanProb_{leps}{int(i / 20)}", "", *bins_count), f"cut{i%20}"))
+        # cut on b jet confidence
+        df = df.Filter("recojet_isB[0] > 0.5 && recojet_isB[1] > 0.5")
         
         if leps != "neutrinos":
             results.append(df.Histo1D((f"cutFlow_{'mumu' if leps == 'muons' else 'ee'}", "", *bins_count), "cut6"))
@@ -336,14 +333,14 @@ def build_graph(df, dataset):
     results.append(df_quarks.Histo1D(("quarks_h_p_nOne", "", *bins_m), "h_dijet_p"))
     
     # filter on Z momentum
-    df_quarks = df_quarks.Filter("z_dijet_p > 35 && z_dijet_p < 56")
+    df_quarks = df_quarks.Filter("z_dijet_p > 45 && z_dijet_p < 56")
     results.append(df_quarks.Histo1D(("cutFlow_bb", "", *bins_count), "cut2"))
     results.append(df_quarks.Histo1D(("cutFlow_cc", "", *bins_count), "cut2"))
     results.append(df_quarks.Histo1D(("cutFlow_ss", "", *bins_count), "cut2"))
     results.append(df_quarks.Histo1D(("cutFlow_qq", "", *bins_count), "cut2"))
     
     # filter on H mass
-    df_quarks = df_quarks.Filter("h_dijet_m > 115 && h_dijet_m < 128")
+    df_quarks = df_quarks.Filter("h_dijet_m > 122 && h_dijet_m < 128")
     results.append(df_quarks.Histo1D(("cutFlow_bb", "", *bins_count), "cut3"))
     results.append(df_quarks.Histo1D(("cutFlow_cc", "", *bins_count), "cut3"))
     results.append(df_quarks.Histo1D(("cutFlow_ss", "", *bins_count), "cut3"))
@@ -353,68 +350,74 @@ def build_graph(df, dataset):
     # flavour tagging
     df_quarks = jet4Flavour.define_and_inference(df_quarks)
     
-    # make sure that there are 2 b jets
-    df_quarks = df_quarks.Define("Hbb_prob1", "recojet_isB[zh_min_idx[2]]")
-    df_quarks = df_quarks.Define("Hbb_prob2", "recojet_isB[zh_min_idx[3]]")
-    df_quarks = df_quarks.Define("Hbb_prob", "Hbb_prob1 + Hbb_prob2")
-    
-    results.append(df_quarks.Graph("Hbb_prob1", "Hbb_prob2"))
+    # get tag confidence
+    df_quarks = df_quarks.Define("Hbb_prob", "std::min(recojet_isB[zh_min_idx[2]], recojet_isB[zh_min_idx[3]])")
     results.append(df_quarks.Histo1D(("Hbb_prob_nOne", "", *bins_prob), "Hbb_prob"))
     
-    df_quarks = df_quarks.Filter("Hbb_prob1 > 0.97 && Hbb_prob2 > 0.97")
+    df_quarks = df_quarks.Define("Zbb_prob", "std::min(recojet_isB[zh_min_idx[0]], recojet_isB[zh_min_idx[1]])")
+    df_quarks = df_quarks.Define("Zcc_prob", "std::min(recojet_isC[zh_min_idx[0]], recojet_isC[zh_min_idx[1]])")
+    df_quarks = df_quarks.Define("Zss_prob", "std::min(recojet_isS[zh_min_idx[0]], recojet_isS[zh_min_idx[1]])")
+    df_quarks = df_quarks.Define("Zqq_prob", "std::min(recojet_isQ[zh_min_idx[0]], recojet_isQ[zh_min_idx[1]])")
     
-    results.append(df_quarks.Histo1D(("cutFlow_bb", "", *bins_count), "cut4"))
-    results.append(df_quarks.Histo1D(("cutFlow_cc", "", *bins_count), "cut4"))
-    results.append(df_quarks.Histo1D(("cutFlow_ss", "", *bins_count), "cut4"))
-    results.append(df_quarks.Histo1D(("cutFlow_qq", "", *bins_count), "cut4"))
-    
-    # sort by tag
-    df_quarks = df_quarks.Define("Zbb_prob1", "recojet_isB[zh_min_idx[0]]")
-    df_quarks = df_quarks.Define("Zbb_prob2", "recojet_isB[zh_min_idx[1]]")
-    df_quarks = df_quarks.Define("Zbb_prob", "Zbb_prob1 + Zbb_prob2")
-    
-    df_quarks = df_quarks.Define("Zcc_prob1", "recojet_isC[zh_min_idx[0]]")
-    df_quarks = df_quarks.Define("Zcc_prob2", "recojet_isC[zh_min_idx[1]]")
-    df_quarks = df_quarks.Define("Zcc_prob", "Zcc_prob1 + Zcc_prob2")
-    
-    df_quarks = df_quarks.Define("Zss_prob1", "recojet_isS[zh_min_idx[0]]")
-    df_quarks = df_quarks.Define("Zss_prob2", "recojet_isS[zh_min_idx[1]]")
-    df_quarks = df_quarks.Define("Zss_prob", "Zss_prob1 + Zss_prob2")
-    
-    df_quarks = df_quarks.Define("Zqq_prob1", "recojet_isQ[zh_min_idx[0]]")
-    df_quarks = df_quarks.Define("Zqq_prob2", "recojet_isQ[zh_min_idx[1]]")
-    df_quarks = df_quarks.Define("Zqq_prob", "Zqq_prob1 + Zqq_prob2")
-    
-    results.append(df_quarks.Graph("Zbb_prob1", "Zbb_prob2"))
-    results.append(df_quarks.Graph("Zcc_prob1", "Zcc_prob2"))
-    results.append(df_quarks.Graph("Zss_prob1", "Zss_prob2"))
-    results.append(df_quarks.Graph("Zqq_prob1", "Zqq_prob2"))
+    results.append(df_quarks.Graph("Hbb_prob", "Zbb_prob"))
+    results.append(df_quarks.Graph("Hbb_prob", "Zcc_prob"))
+    results.append(df_quarks.Graph("Hbb_prob", "Zss_prob"))
+    results.append(df_quarks.Graph("Hbb_prob", "Zqq_prob"))
     
     results.append(df_quarks.Histo1D(("Zbb_prob_nOne", "", *bins_prob), "Zbb_prob"))
     results.append(df_quarks.Histo1D(("Zcc_prob_nOne", "", *bins_prob), "Zcc_prob"))
     results.append(df_quarks.Histo1D(("Zss_prob_nOne", "", *bins_prob), "Zss_prob"))
     results.append(df_quarks.Histo1D(("Zqq_prob_nOne", "", *bins_prob), "Zqq_prob"))
     
+    # sort by most likely tag
+    df_quarks = df_quarks.Define("Zbb_like", "recojet_isB[zh_min_idx[0]] + recojet_isB[zh_min_idx[1]]")
+    df_quarks = df_quarks.Define("Zcc_like", "recojet_isC[zh_min_idx[0]] + recojet_isC[zh_min_idx[1]]")
+    df_quarks = df_quarks.Define("Zss_like", "recojet_isS[zh_min_idx[0]] + recojet_isS[zh_min_idx[1]]")
+    df_quarks = df_quarks.Define("Zqq_like", "recojet_isQ[zh_min_idx[0]] + recojet_isQ[zh_min_idx[1]]")
+    
     df_quarks = df_quarks.Define("best_tag", """
-            if (Zbb_prob > Zcc_prob && Zbb_prob > Zss_prob && Zbb_prob > Zqq_prob) {
+            if (Zbb_like > Zcc_like && Zbb_like > Zss_like && Zbb_like > Zqq_like) {
                 return 0;
-            } else if (Zcc_prob > Zss_prob && Zcc_prob > Zqq_prob) {
+            } else if (Zcc_like > Zss_like && Zcc_like > Zqq_like) {
                 return 1;
-            } else if (Zss_prob > Zqq_prob) {
+            } else if (Zss_like > Zqq_like) {
                 return 2;
             } else {
                 return 3;
             } """)
     
-    df_bb = df_quarks.Filter("best_tag == 0 && Zbb_prob > 2*0.97")
-    df_cc = df_quarks.Filter("best_tag == 1 && Zcc_prob > 1.6")
-    df_ss = df_quarks.Filter("best_tag == 2 && Zss_prob > 1.2")
-    df_qq = df_quarks.Filter("best_tag == 3 && Zqq_prob > 1.1")
+    # sort by maximum likelihood tag
+    df_bb = df_quarks.Filter("best_tag == 0")
+    df_cc = df_quarks.Filter("best_tag == 1")
+    df_ss = df_quarks.Filter("best_tag == 2")
+    df_qq = df_quarks.Filter("best_tag == 3")
+    
+    results.append(df_bb.Histo1D(("cutFlow_bb", "", *bins_count), "cut4"))
+    results.append(df_cc.Histo1D(("cutFlow_cc", "", *bins_count), "cut4"))
+    results.append(df_ss.Histo1D(("cutFlow_ss", "", *bins_count), "cut4"))
+    results.append(df_qq.Histo1D(("cutFlow_qq", "", *bins_count), "cut4"))
+    
+    # make sure there are two b jets
+    df_qq = df_qq.Filter("Hbb_prob > 0.61")
+    df_ss = df_ss.Filter("Hbb_prob > 0.78")
+    df_cc = df_cc.Filter("Hbb_prob > 0.68")
+    df_bb = df_bb.Filter("Hbb_prob > 0.51")
     
     results.append(df_bb.Histo1D(("cutFlow_bb", "", *bins_count), "cut5"))
     results.append(df_cc.Histo1D(("cutFlow_cc", "", *bins_count), "cut5"))
     results.append(df_ss.Histo1D(("cutFlow_ss", "", *bins_count), "cut5"))
     results.append(df_qq.Histo1D(("cutFlow_qq", "", *bins_count), "cut5"))
+    
+    # check that the Z jets are the right type
+    df_bb = df_bb.Filter("Zbb_prob > 0.00")
+    df_cc = df_cc.Filter("Zcc_prob > 0.01")
+    df_ss = df_ss.Filter("Zss_prob > 0.12")
+    df_qq = df_qq.Filter("Zqq_prob > 0.32")
+    
+    results.append(df_bb.Histo1D(("cutFlow_bb", "", *bins_count), "cut6"))
+    results.append(df_cc.Histo1D(("cutFlow_cc", "", *bins_count), "cut6"))
+    results.append(df_ss.Histo1D(("cutFlow_ss", "", *bins_count), "cut6"))
+    results.append(df_qq.Histo1D(("cutFlow_qq", "", *bins_count), "cut6"))
     
     # make final mass and momentum histograms
     for q, df in [("bb", df_bb), ("cc", df_cc), ("ss", df_ss), ("qq", df_qq)]:

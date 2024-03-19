@@ -359,10 +359,10 @@ def build_graph(df, dataset):
     df_quarks = df_quarks.Define("Zss_prob", "std::min(recojet_isS[zh_min_idx[0]], recojet_isS[zh_min_idx[1]])")
     df_quarks = df_quarks.Define("Zqq_prob", "std::min(recojet_isQ[zh_min_idx[0]], recojet_isQ[zh_min_idx[1]])")
     
-    results.append(df_quarks.Graph("Hbb_prob", "Zbb_prob"))
-    results.append(df_quarks.Graph("Hbb_prob", "Zcc_prob"))
-    results.append(df_quarks.Graph("Hbb_prob", "Zss_prob"))
-    results.append(df_quarks.Graph("Hbb_prob", "Zqq_prob"))
+    #results.append(df_quarks.Graph("Hbb_prob", "Zbb_prob"))
+    #results.append(df_quarks.Graph("Hbb_prob", "Zcc_prob"))
+    #results.append(df_quarks.Graph("Hbb_prob", "Zss_prob"))
+    #results.append(df_quarks.Graph("Hbb_prob", "Zqq_prob"))
     
     results.append(df_quarks.Histo1D(("Zbb_prob_nOne", "", *bins_prob), "Zbb_prob"))
     results.append(df_quarks.Histo1D(("Zcc_prob_nOne", "", *bins_prob), "Zcc_prob"))
@@ -409,9 +409,9 @@ def build_graph(df, dataset):
     results.append(df_qq.Histo1D(("cutFlow_qq", "", *bins_count), "cut5"))
     
     # check that the Z jets are the right type
-    df_bb = df_bb.Filter("Zbb_prob > 0.00")
-    df_cc = df_cc.Filter("Zcc_prob > 0.01")
-    df_ss = df_ss.Filter("Zss_prob > 0.12")
+    df_bb = df_bb.Filter("Zbb_prob > 0.30")
+    df_cc = df_cc.Filter("Zcc_prob > 0.20")
+    df_ss = df_ss.Filter("Zss_prob > 0.20")
     df_qq = df_qq.Filter("Zqq_prob > 0.32")
     
     results.append(df_bb.Histo1D(("cutFlow_bb", "", *bins_count), "cut6"))

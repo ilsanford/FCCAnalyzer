@@ -310,8 +310,8 @@ def build_graph(df, dataset):
                             if (i == l || j == l) continue;
                             float distz = (jet_tlv[i] + jet_tlv[j]).M() - 91.2;
                             float disth = (jet_tlv[k] + jet_tlv[l]).M() - 125;
-                            if (distz*distz + disth*disth < distm) {
-                                distm = distz*distz + disth*disth;
+                            if (distz*distz/91.2 + disth*disth/125 < distm) {
+                                distm = distz*distz/91.2 + disth*disth/125;
                                 min[0] = i; min[1] = j; min[2] = k; min[3] = l;
                             }
                         }
@@ -359,11 +359,6 @@ def build_graph(df, dataset):
     df_quarks = df_quarks.Define("Zss_prob", "std::min(recojet_isS[zh_min_idx[0]], recojet_isS[zh_min_idx[1]])")
     df_quarks = df_quarks.Define("Zqq_prob", "std::min(recojet_isQ[zh_min_idx[0]], recojet_isQ[zh_min_idx[1]])")
     
-    #results.append(df_quarks.Graph("Hbb_prob", "Zbb_prob"))
-    #results.append(df_quarks.Graph("Hbb_prob", "Zcc_prob"))
-    #results.append(df_quarks.Graph("Hbb_prob", "Zss_prob"))
-    #results.append(df_quarks.Graph("Hbb_prob", "Zqq_prob"))
-    
     results.append(df_quarks.Histo1D(("Zbb_prob_nOne", "", *bins_prob), "Zbb_prob"))
     results.append(df_quarks.Histo1D(("Zcc_prob_nOne", "", *bins_prob), "Zcc_prob"))
     results.append(df_quarks.Histo1D(("Zss_prob_nOne", "", *bins_prob), "Zss_prob"))
@@ -397,11 +392,16 @@ def build_graph(df, dataset):
     results.append(df_ss.Histo1D(("cutFlow_ss", "", *bins_count), "cut4"))
     results.append(df_qq.Histo1D(("cutFlow_qq", "", *bins_count), "cut4"))
     
+    results.append(df_bb.Graph("Hbb_prob", "Zbb_prob"))
+    results.append(df_cc.Graph("Hbb_prob", "Zcc_prob"))
+    results.append(df_ss.Graph("Hbb_prob", "Zss_prob"))
+    results.append(df_qq.Graph("Hbb_prob", "Zqq_prob"))
+    
     # make sure there are two b jets
-    df_qq = df_qq.Filter("Hbb_prob > 0.61")
-    df_ss = df_ss.Filter("Hbb_prob > 0.78")
-    df_cc = df_cc.Filter("Hbb_prob > 0.68")
-    df_bb = df_bb.Filter("Hbb_prob > 0.51")
+    df_qq = df_qq.Filter("Hbb_prob > 0.032")
+    df_ss = df_ss.Filter("Hbb_prob > 0.032")
+    df_cc = df_cc.Filter("Hbb_prob > 0.029")
+    df_bb = df_bb.Filter("Hbb_prob > 0.011")
     
     results.append(df_bb.Histo1D(("cutFlow_bb", "", *bins_count), "cut5"))
     results.append(df_cc.Histo1D(("cutFlow_cc", "", *bins_count), "cut5"))
@@ -409,10 +409,10 @@ def build_graph(df, dataset):
     results.append(df_qq.Histo1D(("cutFlow_qq", "", *bins_count), "cut5"))
     
     # check that the Z jets are the right type
-    df_bb = df_bb.Filter("Zbb_prob > 0.30")
-    df_cc = df_cc.Filter("Zcc_prob > 0.20")
-    df_ss = df_ss.Filter("Zss_prob > 0.20")
-    df_qq = df_qq.Filter("Zqq_prob > 0.32")
+    df_bb = df_bb.Filter("Zbb_prob > 0.042")
+    df_cc = df_cc.Filter("Zcc_prob > 0.134")
+    df_ss = df_ss.Filter("Zss_prob > 0.095")
+    df_qq = df_qq.Filter("Zqq_prob > 0.053")
     
     results.append(df_bb.Histo1D(("cutFlow_bb", "", *bins_count), "cut6"))
     results.append(df_cc.Histo1D(("cutFlow_cc", "", *bins_count), "cut6"))
@@ -445,4 +445,4 @@ if __name__ == "__main__":
     datasets_bkg = ["p8_ee_WW_ecm240", "p8_ee_ZZ_ecm240", "wzp6_ee_mumu_ecm240", "wzp6_ee_tautau_ecm240", "wzp6_egamma_eZ_Zmumu_ecm240", "wzp6_gammae_eZ_Zmumu_ecm240", "wzp6_gaga_mumu_60_ecm240", "wzp6_gaga_tautau_60_ecm240", "wzp6_ee_nuenueZ_ecm240"]
 
     datasets_to_run = bb_sig + cc_sig + gg_sig + datasets_bkg[:2]
-    result = functions.build_and_run(datadict, datasets_to_run, build_graph, f"output_h_bb.root", args, norm=True, lumi=7200000)
+    result = functions.build_and_run(datadict, datasets_to_run, build_graph, f"end_of_h_bb.root", args, norm=True, lumi=7200000)
